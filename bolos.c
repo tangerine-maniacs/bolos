@@ -6,7 +6,4 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-int main(int argc, char *args[])
-{
-  return 0;
-}
+int main(int argc, char *args[]) { return 0; }

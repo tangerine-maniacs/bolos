@@ -1,0 +1,3 @@
+BasedOnStyle: Google
+BreakBeforeBraces: Allman
+IndentWidth: 4
