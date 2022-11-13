@@ -7,11 +7,12 @@
 #include <unistd.h>
 #include <string.h>
 #include <math.h>
+#include <stdarg.h>
 
 /* Prototipos de funciones */
 void logica();
 int numdigitos(int);
-int engendrar(const char*, const char*, pid_t, pid_t);
+int engendrar(const char*, const char*, int, ...);
 const char* nomhijo(char);
 
 /*
@@ -74,32 +75,30 @@ int numdigitos(int n) {
 
 /*
  * Engendra un hijo con el nombre 'nom_hijo'.
- * Se le pueden pasar dos argumentos opcionales: dos pid_t, que se pasarán
- * al hijo como argumentos. El valor por defecto (si no se pasan), debería
- * ser -1.
+ * Se le pueden pasar argumentos opcionales del tipo pid_t, que se pasarán
+ * al hijo como argumentos. El número de argumentos opcionales que se vayan
+ * a pasar se debe indicar en 'num_pids'.
  *
  * Devuelve el PID del hijo.
  */
-int engendrar(const char* nom_hijo, const char* nom_programa, pid_t pid1, pid_t pid2)
+int engendrar(const char* nom_hijo, const char* nom_programa, int num_pids, ...)
 {
   char** argv = NULL;
-  pid_t pid;
+  pid_t pid_hijo, pid;
   int argv_size = 0;
+  int i;
 
-  switch (pid = fork())
+  va_list ap;
+  va_start(ap, num_pids);
+
+  switch (pid_hijo = fork())
   {
     case -1:
       perror("no pude hacer fork en engendrar :(\n");
       exit(3);
 
     case 0:
-      /*
-       * argv va a tener un tamaño mínimo de 3 (nom_programa, nom_hijo, NULL),
-       * y ese tamaño aumentará en 1 por cada pid que se le pase.
-       * Como los pidx que no se pasan son -1, `pidx != -1` devuelve 1 si pidx 
-       * se ha pasado, y 0 si no, por tanto suma 1 por cada pid que se le pase.
-       */
-      argv = malloc(sizeof(char*) * (3 + (pid1 != -1) + (pid2 != -1)));
+      argv = malloc(sizeof(char*) * (3 + num_pids));
       argv[argv_size++] = (char*) nom_hijo; /*cast a char pq son const char y
                                               si no el compilador se queja*/
       argv[argv_size++] = (char*) nom_programa;
@@ -108,16 +107,11 @@ int engendrar(const char* nom_hijo, const char* nom_programa, pid_t pid1, pid_t 
        * Convertimos los pids que se han pasado como parámetros de esta
        * función en cadenas de caracteres.
        */
-      if (pid1 != -1)
+      for (i = 0; i < num_pids; i++)
       {
-        argv[argv_size] = malloc(numdigitos(pid1) + 1);
-        sprintf(argv[argv_size], "%d", pid1);
-        argv_size++;
-      }
-      if (pid2 != -1)
-      {
-        argv[argv_size] = malloc(numdigitos(pid2) + 1);
-        sprintf(argv[argv_size], "%d", pid2);
+        pid = va_arg(ap, pid_t);
+        argv[argv_size] = malloc(sizeof(char) * (numdigitos(pid) + 1));
+        sprintf(argv[argv_size], "%d", pid);
         argv_size++;
       }
       argv[argv_size++] = NULL;
@@ -145,7 +139,7 @@ int engendrar(const char* nom_hijo, const char* nom_programa, pid_t pid1, pid_t 
       exit(13); // 13 porque mala suerte!
 
     default:
-      return pid;
+      return pid_hijo;
   }
 }
 
@@ -162,6 +156,9 @@ int engendrar(const char* nom_hijo, const char* nom_programa, pid_t pid1, pid_t 
  *     Estos bolos engedrarán 2-(argc-2)=4-argc hijos (si no se le han pasado
  *     bolos, engendrarán 2, si se le ha pasado 1 bolo, engendrá 1, y si se le
  *     han pasado 2, no engendrará ninguno).
+ */
+/*
+ * TODO: Juntar los casos del switch de D, F, y B, C.
  */
 int main(int argc, char *argv[])
 {
@@ -203,13 +200,41 @@ int main(int argc, char *argv[])
     {
       case 'A':
         printf("Soy A, engendro a B, H, E, I y C\n");
-        pid_H = engendrar("H", argv[1], -1, -1);
-        pid_I = engendrar("I", argv[1], -1, -1);
+        pid_H = engendrar("H", argv[1], 0);
+        pid_I = engendrar("I", argv[1], 0);
 
-        pid_E = engendrar("E", argv[1], pid_H, pid_I);
-        engendrar("B", argv[1], pid_E, -1);
-        engendrar("C", argv[1], pid_E, -1);
+        pid_E = engendrar("E", argv[1], 2, pid_H, pid_I);
+
+        /* 
+         * Pasamos a B y C su bolo subordinado (E)
+         * y el bolo subordinado de cada uno de sus hijos (H, I)
+         */
+        engendrar("B", argv[1], 2, pid_E, pid_H);
+        engendrar("C", argv[1], 2, pid_E, pid_I);
         break;
+
+      case 'B':
+      case 'C':
+        /* 
+         * B y C tienen un bolo subordinado (argv[2]), y se les pasa un bolo
+         * que va a ser subordinado de su hijo (argv[3]).
+         */
+        printf("Soy %s, debería tener un hijo, engendro a %s\n", argv[0], nomhijo(argv[0][0]));
+        engendrar(nomhijo(argv[0][0]), argv[1], 1, atoi(argv[3]));
+        break;
+
+      case 'E':
+        printf("Soy %s, no debería de tener hijos. Me han pasado %d bolos "
+            "subordinados\n", argv[0], argc-2);
+        break;
+
+      case 'D':
+      case 'F':
+        /* D y F tienen un bolo subordinado (argv[2]), y tienen 1 hijo. */
+        printf("Soy %s, debería tener un hijo, engendro a %s\n", argv[0], nomhijo(argv[0][0]));
+        engendrar(nomhijo(argv[0][0]), argv[1], 0);
+        break;
+
       case 'G':
       case 'H':
       case 'I':
@@ -217,18 +242,10 @@ int main(int argc, char *argv[])
         printf("Soy %s, no debería tener hijos, tengo %d subordinados\n", 
             argv[0], argc-2);
         break;
-      default:
-        printf("Soy %s, debería tener %d hijos. Me han pasado %d bolos "
-            "subordinados\n", argv[0], 4-argc, argc-2);
-        if (4-argc > 0) {
-          /*
-           * NOTA: Nunca deberíamos engendrar más de un hijo, así que ni siquiera
-           * merece la pena hacer un bucle.
-           */
-          engendrar(nomhijo(argv[0][0]), argv[1], -1, -1);
-        }
     }
 
+    // Sea cual sea el bolo, entramos en la lógica.
+    logica();
   }
 
   return 0;
