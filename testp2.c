@@ -136,6 +136,7 @@ int engendrar(char nom_hijo, char* nom_programa, int num_pids, ...)
         argv_size++;
       }
       argv[argv_size++] = NULL;
+      va_end(ap);
 
       /* 
        * Al hijo le pasamos en argv[0] el nombre del bolo, y en argv[1]
