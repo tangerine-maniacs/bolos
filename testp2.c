@@ -34,6 +34,12 @@ char nomhijo(char);
  */
 
 void logica(char nom, pid_t* subbolos) {
+  /* 
+   * A va a tener 5 subbolos (los dos primeros son a los que les tiene que
+   *  enviar señales),
+   * B, C, D, E, F van a tener 2 subbolos,
+   * G, H, I, J van a tener 0 subbolos.
+   */
   if (nom == 'A') {
     printf("Soy %c y mis subbolos son %d, %d, %d, %d y %d\n", nom,
         subbolos[0], subbolos[1], subbolos[2], subbolos[3], subbolos[4]);
@@ -245,18 +251,23 @@ int main(int argc, char *argv[])
     switch (argv[0][0])
     {
       case 'A':
+        /*
+         * Ponemos B y C (los bolos a los que A envia SIGTERM) en subbolos[0] 
+         * y subbolos[1] para que la lógica para mandar las señales luego sea 
+         * más sencilla.
+         */
         //printf("Soy A, engendro a B, H, E, I y C\n");
-        subbolos[0] = pid_H = engendrar('H', argv[1], 0);
-        subbolos[1] = pid_I = engendrar('I', argv[1], 0);
+        subbolos[2] = pid_H = engendrar('H', argv[1], 0);
+        subbolos[3] = pid_I = engendrar('I', argv[1], 0);
 
-        subbolos[2] = pid_E = engendrar('E', argv[1], 2, pid_H, pid_I);
+        subbolos[4] = pid_E = engendrar('E', argv[1], 2, pid_H, pid_I);
 
         /* 
          * Pasamos a B y C su bolo subordinado (E)
          * y el bolo subordinado de cada uno de sus hijos (H, I)
          */
-        subbolos[3] = engendrar('B', argv[1], 2, pid_E, pid_H);
-        subbolos[4] = engendrar('C', argv[1], 2, pid_E, pid_I);
+        subbolos[0] = engendrar('B', argv[1], 2, pid_E, pid_H);
+        subbolos[1] = engendrar('C', argv[1], 2, pid_E, pid_I);
         break;
 
       case 'B':
