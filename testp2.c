@@ -82,14 +82,9 @@ int numdigitos(int n) {
  */
 int engendrar(const char* nom_hijo, const char* nom_programa, pid_t pid1, pid_t pid2)
 {
-  /*
-   * TODO: Podemos utilizar char** argv, y execv; y guardar dinámicamente la 
-   * memoria para los argumentos, y así no le pasamos a execl varios argumentos
-   * nulos, que no sé si es legal.
-   */
-  char* pid1_str = NULL;
-  char* pid2_str = NULL;
+  char** argv = NULL;
   pid_t pid;
+  int argv_size = 0;
 
   switch (pid = fork())
   {
@@ -99,26 +94,33 @@ int engendrar(const char* nom_hijo, const char* nom_programa, pid_t pid1, pid_t 
 
     case 0:
       /*
+       * argv va a tener un tamaño mínimo de 3 (nom_programa, nom_hijo, NULL),
+       * y ese tamaño aumentará en 1 por cada pid que se le pase.
+       * Como los pidx que no se pasan son -1, `pidx != -1` devuelve 1 si pidx 
+       * se ha pasado, y 0 si no, por tanto suma 1 por cada pid que se le pase.
+       */
+      argv = malloc(sizeof(char*) * (3 + (pid1 != -1) + (pid2 != -1)));
+      argv[argv_size++] = (char*) nom_hijo; /*cast a char pq son const char y
+                                              si no el compilador se queja*/
+      argv[argv_size++] = (char*) nom_programa;
+
+      /*
        * Convertimos los pids que se han pasado como parámetros de esta
        * función en cadenas de caracteres.
        */
       if (pid1 != -1)
       {
-        pid1_str = malloc(numdigitos(pid1) + 1);
-        sprintf(pid1_str, "%d", pid1);
+        argv[argv_size] = malloc(numdigitos(pid1) + 1);
+        sprintf(argv[argv_size], "%d", pid1);
+        argv_size++;
       }
       if (pid2 != -1)
       {
-        pid2_str = malloc(numdigitos(pid2) + 1);
-        sprintf(pid2_str, "%d", pid2);
+        argv[argv_size] = malloc(numdigitos(pid2) + 1);
+        sprintf(argv[argv_size], "%d", pid2);
+        argv_size++;
       }
-      /*
-       * Si pid1 y/o pid2 son -1 (no hemos querido pasar ningún pid), 
-       * sus respectivos pidx_str serán NULL, y execl los interpretará como
-       * el final de la lista de argumentos.
-       * Si ambos se pasan, el NULL del final de la llamada a execl hace de
-       * tope para el final de la lista de argumentos.
-       */
+      argv[argv_size++] = NULL;
 
       /* 
        * Al hijo le pasamos en argv[0] el nombre del bolo, y en argv[1]
@@ -127,16 +129,16 @@ int engendrar(const char* nom_hijo, const char* nom_programa, pid_t pid1, pid_t 
        * También le pasamos los pids de los bolos que quedan debajo suya,
        * si es que los hay, para que pueda mandarles señales.
        */
-      execl(nom_programa, nom_hijo, nom_programa, pid1_str, pid2_str, NULL);
+      execv(nom_programa, argv);
 
       /*
        * Toda la memoria del proceso "bifurcado" se "libera" al llamar a execl()
        * (si no ha habido problemas con la llamada).
-       * Por tanto, no tenemos que liberar pid1_str ni pid2_str.
+       * Por tanto, no tenemos que liberar argv.
        */
 
       /*
-       * TODO: Comprobar que execl no dé problemas.
+       * TODO: Comprobar que execv no dé problemas.
        */
       perror("No he podido engendrar a mi hijo por un problema con alguna de "
           "mis partes!\n");
