@@ -6,6 +6,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <string.h>
+#include <math.h>
+
+/* Prototipos de funciones */
+void logica();
+int numdigitos(int);
+int engendrar(const char*, const char*, pid_t, pid_t);
+const char* nomhijo(char);
 
 /*
  * Árbol de procesos:
@@ -31,10 +38,59 @@ void logica() {
   exit(0);
 }
 
-// Engendra un hijo con el nombre 
-int engendrar(char* nom_hijo, char* nom_programa)
+/*
+ * Devuelve el nombre que debería tener el hijo de un bolo.
+ * B->D, D->G, C->F, F->J.
+ */
+const char* nomhijo(char nompadre) {
+  switch (nompadre) {
+    case 'B':
+      return "D";
+    case 'D':
+      return "G";
+    case 'C':
+      return "F";
+    case 'F':
+      return "J";
+    /*
+     * Default no se debería ejecutar nunca (nunca lo llamamos si el padre no 
+     * es B, D, C o F), así que si se ejecuta avisamos de un error, y salimos
+     * del programa.
+     */
+    default:
+      fprintf(stderr, "Error: nomhijo(%c) llamado con un padre que no es "
+          "B, D, C o F\n", nompadre);
+      exit(4);
+  }
+}
+
+/*
+ * Devuelve el número de dígitos de un número, en base 10, utilizando 
+ * logaritmos.
+ */
+int numdigitos(int n) {
+  return (int) (log10(n) + 1);
+}
+
+/*
+ * Engendra un hijo con el nombre 'nom_hijo'.
+ * Se le pueden pasar dos argumentos opcionales: dos pid_t, que se pasarán
+ * al hijo como argumentos. El valor por defecto (si no se pasan), debería
+ * ser -1.
+ *
+ * Devuelve el PID del hijo.
+ */
+int engendrar(const char* nom_hijo, const char* nom_programa, pid_t pid1, pid_t pid2)
 {
+  /*
+   * TODO: Podemos utilizar char** argv, y execv; y guardar dinámicamente la 
+   * memoria para los argumentos, y así no le pasamos a execl varios argumentos
+   * nulos, que no sé si es legal.
+   */
+  char* pid1_str = NULL;
+  char* pid2_str = NULL;
   pid_t pid;
+
   switch (pid = fork())
   {
     case -1:
@@ -42,13 +98,46 @@ int engendrar(char* nom_hijo, char* nom_programa)
       exit(3);
 
     case 0:
+      /*
+       * Convertimos los pids que se han pasado como parámetros de esta
+       * función en cadenas de caracteres.
+       */
+      if (pid1 != -1)
+      {
+        pid1_str = malloc(numdigitos(pid1) + 1);
+        sprintf(pid1_str, "%d", pid1);
+      }
+      if (pid2 != -1)
+      {
+        pid2_str = malloc(numdigitos(pid2) + 1);
+        sprintf(pid2_str, "%d", pid2);
+      }
+      /*
+       * Si pid1 y/o pid2 son -1 (no hemos querido pasar ningún pid), 
+       * sus respectivos pidx_str serán NULL, y execl los interpretará como
+       * el final de la lista de argumentos.
+       * Si ambos se pasan, el NULL del final de la llamada a execl hace de
+       * tope para el final de la lista de argumentos.
+       */
+
       /* 
        * Al hijo le pasamos en argv[0] el nombre del bolo, y en argv[1]
        * el nombre del programa, para que pueda hacer execl para engendrar
        * sus propios hijos.
+       * También le pasamos los pids de los bolos que quedan debajo suya,
+       * si es que los hay, para que pueda mandarles señales.
        */
-      execl(nom_programa, nom_hijo, nom_programa, NULL);
+      execl(nom_programa, nom_hijo, nom_programa, pid1_str, pid2_str, NULL);
 
+      /*
+       * Toda la memoria del proceso "bifurcado" se "libera" al llamar a execl()
+       * (si no ha habido problemas con la llamada).
+       * Por tanto, no tenemos que liberar pid1_str ni pid2_str.
+       */
+
+      /*
+       * TODO: Comprobar que execl no dé problemas.
+       */
       perror("No he podido engendrar a mi hijo por un problema con alguna de "
           "mis partes!\n");
       exit(13); // 13 porque mala suerte!
@@ -74,6 +163,8 @@ int engendrar(char* nom_hijo, char* nom_programa)
  */
 int main(int argc, char *argv[])
 {
+  pid_t pid_H, pid_E, pid_I;
+
   if (argc == 0) {
     fprintf(stderr, 
         "No se me pasó el nombre del programa, ¡no sé quién soy!\n"
@@ -90,7 +181,7 @@ int main(int argc, char *argv[])
   {
     // Lógica de P
     printf("Soy P, engendro a A\n");
-    engendrar("A", argv[0]);
+    engendrar("A", argv[0], -1, -1);
   }
   else 
   {
@@ -103,7 +194,6 @@ int main(int argc, char *argv[])
     }
 
     printf("Soy %s, el programa es %s\n", argv[0], argv[1]);
-
     /*
      * Lógica del resto de bolos.
      */
@@ -111,14 +201,30 @@ int main(int argc, char *argv[])
     {
       case 'A':
         printf("Soy A, engendro a B, H, E, I y C\n");
-        engendrar("H", argv[1]);
-        engendrar("I", argv[1]);
+        pid_H = engendrar("H", argv[1], -1, -1);
+        pid_I = engendrar("I", argv[1], -1, -1);
 
-        engendrar("E", argv[1]);
-        engendrar("B", argv[1]);
-        engendrar("C", argv[1]);
+        pid_E = engendrar("E", argv[1], pid_H, pid_I);
+        engendrar("B", argv[1], pid_E, -1);
+        engendrar("C", argv[1], pid_E, -1);
         break;
-
+      case 'G':
+      case 'H':
+      case 'I':
+      case 'J':
+        printf("Soy %s, no debería tener hijos, tengo %d subordinados\n", 
+            argv[0], argc-2);
+        break;
+      default:
+        printf("Soy %s, debería tener %d hijos. Me han pasado %d bolos "
+            "subordinados\n", argv[0], 4-argc, argc-2);
+        if (4-argc > 0) {
+          /*
+           * NOTA: Nunca deberíamos engendrar más de un hijo, así que ni siquiera
+           * merece la pena hacer un bucle.
+           */
+          engendrar(nomhijo(argv[0][0]), argv[1], -1, -1);
+        }
     }
 
   }
