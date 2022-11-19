@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 
-pgrep -u "$USER" bolos | xargs -n1 kill
+pkill -f -u "$USER" bolos
+
