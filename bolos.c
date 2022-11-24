@@ -12,7 +12,7 @@
 /**
  * Self expl
  */
-void handle(pid_t left_subpin, pid_t right_subpin);
+void handle(pid_t suBoloI, pid_t suBoloD);
 /**
  * Spawns a series of pins giving each 3 args:
  *  Name 
@@ -29,7 +29,7 @@ void handle(pid_t left_subpin, pid_t right_subpin);
  * Returns the pid of the topmost child
  *
  */
-int spawnChilds(int n, int *args, char *bolos);
+int engendrar(int n, int *args, char *bolos);
 
 /**
  * Also self expl
@@ -39,84 +39,123 @@ char* toString(int v);
 
 int main(int argc, char *argv[])
 {
-    // Declaring vars first because old c 
     int argv0size, *args; 
-    pid_t pin_pids[10];
+    pid_t pid_H, pid_I, pid_E, pid_B, pid_C;
     
-    // Check if this is a child that already has spawned everything
+    /* 
+     * Comprobar el bolo dependiendo del número de argumentos que se le pasen
+     */
     switch (argc) 
     {
         case 1:
-            // Only the program name, this is P
+            // TODO: Comprobar que el nombre del porgrama es "bolos" para
+            // verificar que es P (nos pueden llamar al programa con más de 
+            // un argumento?).
+            /* 
+             * No se ha llamado con ningún argumento, es P.
+             */
             switch (fork())
             {
                 case -1:
-                    perror("the first one :(\n");
-                    exit(-1);
+                    perror("Fallo en el primer fork (1)\n");
+                    exit(1);
 
                 case 0:
                     execl(argv[0], "A", argv[0], NULL);
 
                 default:
-                    printf("P dies\n");
+                    printf("P muere\n");
                     exit(0);
             }
 
         case 2:
-            // The pin name and program name, this is A
+            /*
+             * Tenemos 2 argumentos:
+             *   - el nombre del bolo
+             *   - el nombre del programa
+             *  Esto sólo ocurre cuando el bolo es A.
+             */
             break;
 
         case 4:
-            // The pin name, program name and the 2 childs, any other pins 
+            /* Tenemos 4 argumentos:
+             *   - nombre del bolo
+             *   - argv[0] original
+             *   - pid del bolo de la izquierda
+             *   - pid del bolo de la derecha
+             * Este es el caso para cualquier bolo que no sea A.
+             */
             handle(atoi(argv[2]), atoi(argv[3]));
 
-            // bad
-            perror("this is also bad!\n");
-            exit(-1);
+            /* No se debería llegar a este punto, handle hace exit. */
+            perror("Ejecutado el tope de después de handle para el caso"
+                "general (2)\n");
+            exit(2);
     }
-
-    // Now this is A
-    pin_pids[0] = getpid();  
-
-    // Spawn H and I first
+    
+    /* 
+     * Si hemos llegado aquí, el bolo es A (el único que sale del switch de
+     * arriba).
+     */
+    /* === Engendramos a H e I, que son hijos de A, y se los tenemos que ===
+     * === pasar a D, E y F.                                             ===
+     */
+    /* Reservamos espacio para los argumentos que le vamos a pasar a engendrar.
+     * Estos bolos no tienen hijos, así que reservamos espacio para una tupla
+     * de 3 argumentos.
+     * El nombre del bolo, el pid del suBoloI y el pid de suBoloD.
+     */
     args = malloc(sizeof(int) * 3);
+    //TODO: check if malloc failed.
 
+    /* 
+     * NOTA: El primer elemento de args es un caracter, pero lo convertimos a
+     * entero, y lo pasamos como entero, para que nos resulte más sencillo
+     * de manejar (sólo tenemos que pasar una array).
+     */
     args[0] = 'H'; args[1] = -1; args[2] = -1;
-    pin_pids[7] = spawnChilds(1, args, argv[1]); 
+    pid_H = engendrar(1, args, argv[1]); 
 
     args[0] = 'I'; args[1] = -1; args[2] = -1;
-    pin_pids[8] = spawnChilds(1, args, argv[1]); 
+    pid_I = engendrar(1, args, argv[1]); 
 
-    // Now spawn E with I and H as sub-pins 
-    args[0] = 'E'; args[1] = pin_pids[7]; args[2] = pin_pids[8];
-    pin_pids[4] = spawnChilds(1, args, argv[1]); 
-    free(args);
+    /* === Engendramos a E con H e I como hijos                          ===
+     */
+    args[0] = 'E'; args[1] = pid_H; args[2] = pid_I;
+    pid_E = engendrar(1, args, argv[1]); 
 
-    // Now the fan part:
-    //     Spawn B, D, G and C, F, J
+    free(args); /* Liberamos la memoria del malloc anterior. */
+
+
+    /* === Engendramos las ristras BDG y CFJ.                            ===
+     * === Para BDG, le pasamos a engendrar los datos de B, y sus hijos, ===
+     * === D y G.                                                        ===
+     */
     args = malloc(3 * 3 * sizeof(int));             // 3 pins with 3 ints/pid_t each
 
-    args[0] = 'G'; args[1] = -1; args[2] = -1;      // G has no sub pins
-    args[3] = 'D'; args[4] = -1; args[5] = pin_pids[7]; // D has H as is rsub_pin 
-    args[6] = 'B'; args[7] = -1; args[8] = pin_pids[4]; // B has E as is rsub_pin 
-    pin_pids[1] = spawnChilds(3, args, argv[1]);
+    args[0] = 'G'; args[1] = -1; args[2] = -1;      // G no tiene suBolos
+    args[3] = 'D'; args[4] = -1; args[5] = pid_H;   // D tiene H como suBoloD 
+    args[6] = 'B'; args[7] = -1; args[8] = pid_E;   // B tiene E como suBoloD 
+    pid_B = engendrar(3, args, argv[1]);
 
-    args[0] = 'J'; args[1] = -1; args[2] = -1;      // J has no sub pins
-    args[3] = 'F'; args[4] = pin_pids[8]; args[5] = -1; // F has I as is lsub_pin 
-    args[6] = 'C'; args[7] = pin_pids[4]; args[8] = -1; // C has E as is lsub_pin 
-    pin_pids[2] = spawnChilds(3, args, argv[1]);
+    /* === Para CFJ, le pasamos a engendrar los datos de C, y sus hijos, ===
+     * === F y J.                                                        ===
+     */
+    args[0] = 'J'; args[1] = -1; args[2] = -1;      // J no tiene suBolos
+    args[3] = 'F'; args[4] = pid_I; args[5] = -1;   // F tiene I como suBoloI
+    args[6] = 'C'; args[7] = pid_E; args[8] = -1;   // C tiene E como suBoloI
+    pid_C = engendrar(3, args, argv[1]);
 
-    free(args);
+    free(args); /* Liberamos la memoria del malloc anterior. */
 
     // At this point, pins 3, 5, 6 and 9 are unknown 
-    handle(pin_pids[1], pin_pids[2]);
+    handle(pid_B, pid_C);
 }
 
-
-void handle(pid_t left_subpin, pid_t right_subpin)
+void handle(pid_t suBoloI, pid_t suBoloD)
 {
-    if (left_subpin != -1)
-        printf("%d has %d and %d as sub-pins\n", getpid(), left_subpin, right_subpin);
+    if (suBoloI != -1)
+        printf("%d has %d and %d as sub-pins\n", getpid(), suBoloI, suBoloD);
     else
         printf("%d doesnt have sub-pins :(\n", getpid());
 
@@ -125,50 +164,82 @@ void handle(pid_t left_subpin, pid_t right_subpin)
     exit(0);
 }
 
-int spawnChilds(int n, int *args, char *bolos)
+/*
+ * Engendra una ristra de bolos (o un solo bolo) a partir de un array de
+ * tuplas de 3 elementos (nombre, pidI, pidD).
+ *
+ * Devuelve el pid del primer bolo de la ristra.
+ *
+ * n:    número de bolos que vamos a engendrar
+ *
+ * args: array de tuplas de 3 elementos, cada tupla son los argumentos que
+ *       vamos a pasar a la llamada de execl de un bolo.
+ *       En cada tupla:
+ *        - tupla[0] es el nombre del bolo
+ *        - tupla[1] es el pid del suBoloI
+ *        - tupla[2] es el pid del suBoloD
+ *
+ * argv0_inicial: nombre del programa inicial (argv[0] para el padre.). Lo 
+ *        necesitamos para poder pasarle el nombre del programa a las llamadas
+ *        de execl.
+ *
+ * La lista de tuplas se pasa en orden inverso (la tupla del padre es la última
+ * de la lista, la de su hijo es la penúltima,...).
+ */
+int engendrar(int n, int *args, char *argv0_inicial)
 {
     // ai = (--n) * 3  =>> empiezo a contar por 1 (--n)
     // y cada bolo necesita 3 argumentos ( * 3 )
-    int f, ai = (--n) * 3; 
-    pid_t lsub_pin = args[ai + 1], rsub_pin = args[ai + 2];
+    int f;
+    int ai = (--n) * 3; /* ai = argument index 
+                         * Índice del primer elemento de la última tupla (
+                         * la del bolo que nos toca).
+                         */
+
+    pid_t suBoloI = args[ai + 1];
+    pid_t suBoloD = args[ai + 2];
     char *name;
 
     switch ((f = fork()))
     {
         case -1:
-            perror("child spawn failed\n");
-            exit(-1);
+            perror("Fallo al hacer fork para engendrar un hijo (3)\n");
+            exit(3);
 
         case 0:
-            // Its a child, spawn if needed
-            if (n)
+            /* Código del hijo, engendramos al siguiente bolo de la ristra
+             * si es necesario
+             */
+            if (n > 0)
             {
-                // Check if this should be a saved (yes, yes it should) 
-                if (lsub_pin == -1)
-                {
-                    lsub_pin = spawnChilds(n, args, bolos);
-                }
+                /* Si el subbolo de la izquierda es -1 (no existe), engendramos
+                 * ese bolo.
+                 * Si no, engendramos el subbolo de la derecha.
+                 */
+                if (suBoloI == -1)
+                    suBoloI = engendrar(n, args, argv0_inicial);
                 else 
-                {
-                    // Si no es uno tiene que ser el otro
-                    rsub_pin = spawnChilds(n, args, bolos);
-                }
+                    suBoloD = engendrar(n, args, argv0_inicial);
             }
             
-            // When a child is created and done spawning, it will execl to the
-            // main funcion with a changed name and the following args:
-            //      [name, bolos, left_subpin, right_subpin]
+            /* Cuando un hijo es creado y termina de engendrar, ejecuta execl
+             * para la función principal con el nombre cambiado y los siguientes
+             * argumentos:
+             *      [nombre, argv0_inicial, suBoloI, suBoloD]
+             */
+            // TODO: Esto en un ctostr()?
             name = malloc(2 * sizeof(char));
             name[0] = args[ai]; name[1] = 0;
 
-            execl(bolos, name, bolos, toString(lsub_pin), toString(rsub_pin), NULL);
+            execl(argv0_inicial, name, argv0_inicial, toString(suBoloI), toString(suBoloD), NULL);
 
-            // It shouldn't reach this
-            perror("this is bad!\n");
-            return 0;
+            /* Si llegamos aquí, algo ha fallado */
+            perror("Se ha llegado al tope de ejecutar. (4)\n");
+            exit(4);
 
         default:
-            // Its the father, return the pid
+            /* Somos el bolo padre (la primera tupla que se ha de engendrar),
+             * devolvemos el pid del hijo que hemos creado.*/
             return f;
     }
 }
@@ -181,6 +252,5 @@ char *toString(int v)
     sprintf(str, "%d", v); 
     return str;
 }
-
 
 
