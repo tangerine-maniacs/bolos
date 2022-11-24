@@ -12,7 +12,7 @@
 /**
  * Self expl
  */
-void handle(pid_t suBoloI, pid_t suBoloD);
+void mente(pid_t suBoloI, pid_t suBoloD);
 /**
  * Spawns a series of pins giving each 3 args:
  *  Name 
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
              *   - pid del bolo de la derecha
              * Este es el caso para cualquier bolo que no sea A.
              */
-            handle(atoi(argv[2]), atoi(argv[3]));
+            mente(atoi(argv[2]), atoi(argv[3]));
 
             /* No se debería llegar a este punto, handle hace exit. */
             perror("Ejecutado el tope de después de handle para el caso"
@@ -149,10 +149,14 @@ int main(int argc, char *argv[])
     free(args); /* Liberamos la memoria del malloc anterior. */
 
     // At this point, pins 3, 5, 6 and 9 are unknown 
-    handle(pid_B, pid_C);
+    mente(pid_B, pid_C);
 }
 
-void handle(pid_t suBoloI, pid_t suBoloD)
+/*
+ * Esta función se encarga de manejar la lógica de los bolos una vez se han
+ * creado.
+ */
+void mente(pid_t suBoloI, pid_t suBoloD)
 {
     if (suBoloI != -1)
         printf("%d has %d and %d as sub-pins\n", getpid(), suBoloI, suBoloD);
