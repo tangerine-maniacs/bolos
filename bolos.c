@@ -176,8 +176,8 @@ void handle(pid_t suBoloI, pid_t suBoloD)
  *       vamos a pasar a la llamada de execl de un bolo.
  *       En cada tupla:
  *        - tupla[0] es el nombre del bolo
- *        - tupla[1] es el pid del suBoloI
- *        - tupla[2] es el pid del suBoloD
+ *        - tupla[1] es el pid del suBoloI (o -1 si no tiene)
+ *        - tupla[2] es el pid del suBoloD (o -1 si no tiene)
  *
  * argv0_inicial: nombre del programa inicial (argv[0] para el padre.). Lo 
  *        necesitamos para poder pasarle el nombre del programa a las llamadas
