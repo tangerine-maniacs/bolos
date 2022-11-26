@@ -8,6 +8,7 @@
 #include <string.h>
 #include <math.h>
 
+#define __USE_POSIX
 
 /*
  * Función principal de todos los bolos una vez creados
