@@ -27,31 +27,33 @@ int main(int argc, char *argv[])
     int argv0size, *args; 
     pid_t pid_H, pid_I, pid_E, pid_B, pid_C;
     
-    /* 
-     * Comprobar el bolo dependiendo del número de argumentos que se le pasen
-     */
+    /* Comprobar P mirando si el primer argumento acaba con "bolos" */
+    if (strcmp(strlen(argv[0]) - 6 + argv[0], "bolos"))
+    {
+        /* Acaba en bolos, es P */
+        switch (fork())
+        {
+            case -1:
+                perror("Fallo en el primer fork (1)\n");
+                exit(1);
+
+            case 0:
+                execl(argv[0], "A", argv[0], NULL);
+
+            default:
+                printf("P muere\n");
+                exit(0);
+        }
+    }
+
+    /* Comprobar el bolo dependiendo del número de argumentos que se le pasen */
     switch (argc) 
     {
         case 1:
-            // TODO: Comprobar que el nombre del porgrama es "bolos" para
-            // verificar que es P (nos pueden llamar al programa con más de 
-            // un argumento?).
-            /* 
-             * No se ha llamado con ningún argumento, es P.
+            /* 1 solo argumento debería ocurrir cuando se llama a P pero por
+             * precaución lo hacemos aparte comprobando el argumento.
              */
-            switch (fork())
-            {
-                case -1:
-                    perror("Fallo en el primer fork (1)\n");
-                    exit(1);
-
-                case 0:
-                    execl(argv[0], "A", argv[0], NULL);
-
-                default:
-                    printf("P muere\n");
-                    exit(0);
-            }
+            break;
 
         case 2:
             /* Tenemos 2 argumentos:
