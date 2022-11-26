@@ -9,30 +9,15 @@
 #include <math.h>
 
 
-/**
- * Self expl
+/*
+ * Función principal de todos los bolos una vez creados
  */
 void mente(pid_t suBoloI, pid_t suBoloD);
-/**
- * Spawns a series of pins giving each 3 args:
- *  Name 
- *  pid of pin down left        - or -1 if it doesn't have one
- *  pid of pin down right       - or -1 if it doesn't have one
- *
- *      If only one of the pins is -1 and the pin
- *      should have a child that child will be used
- *
- * It will access the args in inverse order, so 
- * for 3 pins, the following call could be used: 
- *      spawnPin(3, {name_of_3, lp3, rp3, name_of_2, lp2, rp2, name_of_1, lp1, rp1})
- *
- * Returns the pid of the topmost child
- *
- */
+
 int engendrar(int n, int *args, char *bolos);
 
-/**
- * Also self expl
+/*
+ * Esta función se auto documenta bien
  */
 char* toString(int v);
 
@@ -69,8 +54,7 @@ int main(int argc, char *argv[])
             }
 
         case 2:
-            /*
-             * Tenemos 2 argumentos:
+            /* Tenemos 2 argumentos:
              *   - el nombre del bolo
              *   - el nombre del programa
              *  Esto sólo ocurre cuando el bolo es A.
@@ -131,7 +115,7 @@ int main(int argc, char *argv[])
      * === Para BDG, le pasamos a engendrar los datos de B, y sus hijos, ===
      * === D y G.                                                        ===
      */
-    args = malloc(3 * 3 * sizeof(int));             // 3 pins with 3 ints/pid_t each
+    args = malloc(3 * 3 * sizeof(int));
 
     args[0] = 'G'; args[1] = -1; args[2] = -1;      // G no tiene suBolos
     args[3] = 'D'; args[4] = -1; args[5] = pid_H;   // D tiene H como suBoloD 
@@ -232,6 +216,7 @@ int engendrar(int n, int *args, char *argv0_inicial)
              *      [nombre, argv0_inicial, suBoloI, suBoloD]
              */
             // TODO: Esto en un ctostr()?
+            //  ~ ctostr no le gusta a mi compilador :(
             name = malloc(2 * sizeof(char));
             name[0] = args[ai]; name[1] = 0;
 
