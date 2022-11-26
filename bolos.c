@@ -92,7 +92,11 @@ int main(int argc, char *argv[])
      * El nombre del bolo, el pid del suBoloI y el pid de suBoloD.
      */
     args = malloc(sizeof(int) * 3);
-    //TODO: check if malloc failed.
+    if (args == NULL)
+    {
+        perror("Error al alocar memoria en A\n");
+        exit(2);
+    }
 
     /* 
      * NOTA: El primer elemento de args es un caracter, pero lo convertimos a
@@ -118,6 +122,11 @@ int main(int argc, char *argv[])
      * === D y G.                                                        ===
      */
     args = malloc(3 * 3 * sizeof(int));
+    if (args == NULL)
+    {
+        perror("Error al alocar memoria en A. Existen procesos creados!!\n");
+        exit(2);
+    }
 
     args[0] = 'G'; args[1] = -1; args[2] = -1;      // G no tiene suBolos
     args[3] = 'D'; args[4] = -1; args[5] = pid_H;   // D tiene H como suBoloD 
@@ -220,6 +229,12 @@ int engendrar(int n, int *args, char *argv0_inicial)
             // TODO: Esto en un ctostr()?
             //  ~ ctostr no le gusta a mi compilador :(
             name = malloc(2 * sizeof(char));
+            if (name == NULL)
+            {
+                fprintf(stderr, "Error al alocar memoria en %c\n", name[0]);
+                exit(2);
+            }
+
             name[0] = args[ai]; name[1] = 0;
 
             execl(argv0_inicial, name, argv0_inicial, toString(suBoloI), toString(suBoloD), NULL);
@@ -239,6 +254,11 @@ char *toString(int v)
 {
     int len = (int)(ceil(log10(abs(v))) + 2);
     char *str = malloc(len * sizeof(char));
+    if (str == NULL)
+    {
+        perror("Error al alocar memoria en toString\n");
+        exit(2);
+    }
 
     sprintf(str, "%d", v); 
     return str;
