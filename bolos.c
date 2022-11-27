@@ -1,13 +1,13 @@
 #include <errno.h>
+#include <math.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <string.h>
-#include <math.h>
-#include <sys/time.h>
 
 #define __USE_POSIX
 
@@ -18,19 +18,18 @@ void mente(pid_t suBoloI, pid_t suBoloD);
 
 int engendrar(int n, int *args, char *bolos);
 /* Convierte un entero a un string */
-char* toString(int v);
+char *toString(int v);
 /* Función vacía para pasársela a sigaction */
 void nonada(int signum);
 /* Utiliza gettimeofday para decidir qué va a hacer el bolo una vez lo han
  * tirado */
 int elegir_accion(void);
 
-
 int main(int argc, char *argv[])
 {
-    int argv0size, *args; 
+    int argv0size, *args;
     pid_t pid_H, pid_I, pid_E, pid_B, pid_C;
-    
+
     /* Comprobar P mirando si el primer argumento acaba con "bolos" */
     if (strstr(argv[0], "bolos") != NULL)
     {
@@ -52,7 +51,7 @@ int main(int argc, char *argv[])
     }
 
     /* Comprobar el bolo dependiendo del número de argumentos que se le pasen */
-    switch (argc) 
+    switch (argc)
     {
         case 1:
             /* 1 solo argumento debería ocurrir cuando se llama a P pero por
@@ -79,12 +78,13 @@ int main(int argc, char *argv[])
             mente(atoi(argv[2]), atoi(argv[3]));
 
             /* No se debería llegar a este punto, handle hace exit. */
-            perror("Ejecutado el tope de después de handle para el caso"
+            perror(
+                "Ejecutado el tope de después de handle para el caso"
                 "general (2)\n");
             exit(2);
     }
-    
-    /* 
+
+    /*
      * Si hemos llegado aquí, el bolo es A (el único que sale del switch de
      * arriba).
      */
@@ -103,24 +103,29 @@ int main(int argc, char *argv[])
         exit(2);
     }
 
-    /* 
+    /*
      * NOTA: El primer elemento de args es un caracter, pero lo convertimos a
      * entero, y lo pasamos como entero, para que nos resulte más sencillo
      * de manejar (sólo tenemos que pasar una array).
      */
-    args[0] = 'H'; args[1] = -1; args[2] = -1;
-    pid_H = engendrar(1, args, argv[1]); 
+    args[0] = 'H';
+    args[1] = -1;
+    args[2] = -1;
+    pid_H = engendrar(1, args, argv[1]);
 
-    args[0] = 'I'; args[1] = -1; args[2] = -1;
-    pid_I = engendrar(1, args, argv[1]); 
+    args[0] = 'I';
+    args[1] = -1;
+    args[2] = -1;
+    pid_I = engendrar(1, args, argv[1]);
 
     /* === Engendramos a E con H e I como hijos                          ===
      */
-    args[0] = 'E'; args[1] = pid_H; args[2] = pid_I;
-    pid_E = engendrar(1, args, argv[1]); 
+    args[0] = 'E';
+    args[1] = pid_H;
+    args[2] = pid_I;
+    pid_E = engendrar(1, args, argv[1]);
 
     free(args); /* Liberamos la memoria del malloc anterior. */
-
 
     /* === Engendramos las ristras BDG y CFJ.                            ===
      * === Para BDG, le pasamos a engendrar los datos de B, y sus hijos, ===
@@ -133,22 +138,34 @@ int main(int argc, char *argv[])
         exit(2);
     }
 
-    args[0] = 'G'; args[1] = -1; args[2] = -1;      // G no tiene suBolos
-    args[3] = 'D'; args[4] = -1; args[5] = pid_H;   // D tiene H como suBoloD 
-    args[6] = 'B'; args[7] = -1; args[8] = pid_E;   // B tiene E como suBoloD 
+    args[0] = 'G';
+    args[1] = -1;
+    args[2] = -1;  // G no tiene suBolos
+    args[3] = 'D';
+    args[4] = -1;
+    args[5] = pid_H;  // D tiene H como suBoloD
+    args[6] = 'B';
+    args[7] = -1;
+    args[8] = pid_E;  // B tiene E como suBoloD
     pid_B = engendrar(3, args, argv[1]);
 
     /* === Para CFJ, le pasamos a engendrar los datos de C, y sus hijos, ===
      * === F y J.                                                        ===
      */
-    args[0] = 'J'; args[1] = -1; args[2] = -1;      // J no tiene suBolos
-    args[3] = 'F'; args[4] = pid_I; args[5] = -1;   // F tiene I como suBoloI
-    args[6] = 'C'; args[7] = pid_E; args[8] = -1;   // C tiene E como suBoloI
+    args[0] = 'J';
+    args[1] = -1;
+    args[2] = -1;  // J no tiene suBolos
+    args[3] = 'F';
+    args[4] = pid_I;
+    args[5] = -1;  // F tiene I como suBoloI
+    args[6] = 'C';
+    args[7] = pid_E;
+    args[8] = -1;  // C tiene E como suBoloI
     pid_C = engendrar(3, args, argv[1]);
 
     free(args); /* Liberamos la memoria del malloc anterior. */
 
-    // At this point, pins 3, 5, 6 and 9 are unknown 
+    // At this point, pins 3, 5, 6 and 9 are unknown
     mente(pid_B, pid_C);
 }
 
@@ -159,23 +176,23 @@ void nonada(int signum) {}
  */
 void mente(pid_t suBoloI, pid_t suBoloD)
 {
-    /* 
-     * Creamos un conjunto de bloqueo de señales con SIGTERM, y otro sin 
-     * SIGTERM. También guardamos el conjunto de señales viejo, para poder restaurarlo
-     * cuando terminemos.
+    /*
+     * Creamos un conjunto de bloqueo de señales con SIGTERM, y otro sin
+     * SIGTERM. También guardamos el conjunto de señales viejo, para poder
+     * restaurarlo cuando terminemos.
      */
     sigset_t conjunto_SIGTERM, conjunto_viejo, conjunto_sin_SIGTERM,
-             conjunto_vacio;
+        conjunto_vacio;
     struct sigaction accion_nueva, accion_vieja;
 
-    /* 
+    /*
      * Creamos una máscara de bloqueo de señales que tenga sólo SIGTERM.
      * Guardamos el conjunto de señales viejo para poder restaurarlo cuando
      * terminemos.
      */
     sigemptyset(&conjunto_SIGTERM);
     sigaddset(&conjunto_SIGTERM, SIGTERM);
-    if (sigprocmask(SIG_BLOCK, &conjunto_SIGTERM, &conjunto_viejo)==-1)
+    if (sigprocmask(SIG_BLOCK, &conjunto_SIGTERM, &conjunto_viejo) == -1)
         exit(1);
 
     /*
@@ -183,24 +200,23 @@ void mente(pid_t suBoloI, pid_t suBoloD)
      * Para ello, hacemos la copia del conjunto viejo y le quitamos la señal
      * de SIGTERM.
      */
-    conjunto_sin_SIGTERM=conjunto_viejo;
-    sigdelset(&conjunto_sin_SIGTERM,SIGTERM);
+    conjunto_sin_SIGTERM = conjunto_viejo;
+    sigdelset(&conjunto_sin_SIGTERM, SIGTERM);
 
-    /* 
+    /*
      * Creamos una estructura de sigaction para poder manejar la señal
-     * SIGTERM. Guardamos la acción vieja. 
+     * SIGTERM. Guardamos la acción vieja.
      * La máscara de bloqueo de señales para esta acción va a ser el conjunto
      * vacío, lo que significa que cualquier otra señal puede interrumpir
      * la ejecución de esta acción
      */
     sigemptyset(&conjunto_vacio);
-    accion_nueva.sa_handler=nonada;
-    accion_nueva.sa_mask=conjunto_vacio;
-    accion_nueva.sa_flags=SA_RESTART; /* SA_RESTART es porque Polar ha dicho
-                                       * que es lo mejor.
-                                       */
-    if(sigaction(SIGTERM,&accion_nueva,&accion_vieja)==-1) 
-        exit(1);
+    accion_nueva.sa_handler = nonada;
+    accion_nueva.sa_mask = conjunto_vacio;
+    accion_nueva.sa_flags = SA_RESTART; /* SA_RESTART es porque Polar ha dicho
+                                         * que es lo mejor.
+                                         */
+    if (sigaction(SIGTERM, &accion_nueva, &accion_vieja) == -1) exit(1);
 
     /* Aquí ya tenemos código de verdad. */
     if (suBoloI != -1)
@@ -208,7 +224,7 @@ void mente(pid_t suBoloI, pid_t suBoloD)
     else
         printf("%d doesnt have sub-pins :(\n", getpid());
 
-    /* 
+    /*
      * Esperamos a que nos llegue una señal de SIGTERM. Significaría
      * que nos han tirado
      */
@@ -217,36 +233,56 @@ void mente(pid_t suBoloI, pid_t suBoloD)
     printf("[%d] He sido tirado :(\n", getpid());
 
     /* Si tenemos bolos debajo de nosotros, procedemos a tirarlos. */
-    if (suBoloI != -1 && suBoloD != -1) {
-      switch (elegir_accion()) {
-          case 0:
-              printf("[%d] No tiro a nadie\n", getpid());
-              break;
-          case 1:
-              printf("[%d] Tiro al bolo de la izq (%d).\n", getpid(), suBoloI);
-              kill(suBoloI, SIGTERM);
-              break;
-          case 2:
-              printf("[%d] Tiro al bolo de de la dcha (%d).\n", getpid(), suBoloD);
-              kill(suBoloD, SIGTERM);
-              break;
-          case 3:
-              printf("[%d] Tiro ambos bolos (%d y %d)\n", getpid(), suBoloI, suBoloD);
-              kill(suBoloI, SIGTERM);
-              kill(suBoloD, SIGTERM);
-              break;
-      }
-    } else {
-      printf("[%d] No tengo bolos debajo de mi, no tiro a nadie.\n", getpid());
+    if (suBoloI != -1 && suBoloD != -1)
+    {
+        switch (elegir_accion())
+        {
+            case 0:
+                printf("[%d] No tiro a nadie\n", getpid());
+                break;
+            case 1:
+                printf("[%d] Tiro al bolo de la izq (%d).\n", getpid(),
+                       suBoloI);
+                if (kill(suBoloI, SIGTERM) == -1)
+                {
+                    printf("Error al tirar (%d): %s", suBoloI, strerror(errno));
+                }
+                break;
+            case 2:
+                printf("[%d] Tiro al bolo de de la dcha (%d).\n", getpid(),
+                       suBoloD);
+                if (kill(suBoloD, SIGTERM) == -1)
+                {
+                    printf("Error al tirar (%d): %s", suBoloD, strerror(errno));
+                }
+                break;
+            case 3:
+                printf("[%d] Tiro ambos bolos (%d y %d)\n", getpid(), suBoloI,
+                       suBoloD);
+                if (kill(suBoloI, SIGTERM) == -1)
+                {
+                    printf("Error al tirar (%d): %s", suBoloI, strerror(errno));
+                }
+                if (kill(suBoloD, SIGTERM) == -1)
+                {
+                    printf("Error al tirar (%d): %s", suBoloD, strerror(errno));
+                }
+                break;
+        }
+    }
+    else
+    {
+        printf("[%d] No tengo bolos debajo de mi, no tiro a nadie.\n",
+               getpid());
     }
 
     /* Fin del código de verdad */
 
-    /* 
+    /*
      * Restauramos el conjunto de señales viejo, y la acción vieja de SIGTERM.
      */
-    if(sigaction(SIGTERM,&accion_vieja,NULL)==-1) exit(1);
-    if(sigprocmask(SIG_SETMASK,&conjunto_viejo,NULL)==-1) exit(1);
+    if (sigaction(SIGTERM, &accion_vieja, NULL) == -1) exit(1);
+    if (sigprocmask(SIG_SETMASK, &conjunto_viejo, NULL) == -1) exit(1);
 
     exit(0);
 }
@@ -276,7 +312,7 @@ int elegir_accion(void)
  *        - tupla[1] es el pid del suBoloI (o -1 si no tiene)
  *        - tupla[2] es el pid del suBoloD (o -1 si no tiene)
  *
- * argv0_inicial: nombre del programa inicial (argv[0] para el padre.). Lo 
+ * argv0_inicial: nombre del programa inicial (argv[0] para el padre.). Lo
  *        necesitamos para poder pasarle el nombre del programa a las llamadas
  *        de execl.
  *
@@ -288,7 +324,7 @@ int engendrar(int n, int *args, char *argv0_inicial)
     // ai = (--n) * 3  =>> empiezo a contar por 1 (--n)
     // y cada bolo necesita 3 argumentos ( * 3 )
     int f;
-    int ai = (--n) * 3; /* ai = argument index 
+    int ai = (--n) * 3; /* ai = argument index
                          * Índice del primer elemento de la última tupla (
                          * la del bolo que nos toca).
                          */
@@ -315,10 +351,10 @@ int engendrar(int n, int *args, char *argv0_inicial)
                  */
                 if (suBoloI == -1)
                     suBoloI = engendrar(n, args, argv0_inicial);
-                else 
+                else
                     suBoloD = engendrar(n, args, argv0_inicial);
             }
-            
+
             /* Cuando un hijo es creado y termina de engendrar, ejecuta execl
              * para la función principal con el nombre cambiado y los siguientes
              * argumentos:
@@ -333,9 +369,11 @@ int engendrar(int n, int *args, char *argv0_inicial)
                 exit(2);
             }
 
-            name[0] = args[ai]; name[1] = 0;
+            name[0] = args[ai];
+            name[1] = 0;
 
-            execl(argv0_inicial, name, argv0_inicial, toString(suBoloI), toString(suBoloD), NULL);
+            execl(argv0_inicial, name, argv0_inicial, toString(suBoloI),
+                  toString(suBoloD), NULL);
 
             /* Si llegamos aquí, algo ha fallado */
             perror("Se ha llegado al tope de ejecutar. (4)\n");
@@ -358,8 +396,6 @@ char *toString(int v)
         exit(2);
     }
 
-    sprintf(str, "%d", v); 
+    sprintf(str, "%d", v);
     return str;
 }
-
-
