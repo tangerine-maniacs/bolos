@@ -44,7 +44,6 @@ int main(int argc, char *argv[])
 
             case 0:
                 execl(argv[0], "A", argv[0], NULL);
-                printf("A: %d\n", getpid());
 
             default:
                 printf("P muere\n");
@@ -67,6 +66,7 @@ int main(int argc, char *argv[])
              *   - el nombre del programa
              *  Esto sólo ocurre cuando el bolo es A.
              */
+            printf("A: %d\n", getpid());
             break;
 
         case 4:
@@ -152,10 +152,12 @@ int main(int argc, char *argv[])
         return retorno_mente;
 
     /* Dormir */
+    printf("A duerme durante 4 segundos...\n");
     sleep(4);
     /* TODO: Imprimir dibujo */
     
-    /* TODO: Usar ps -fu */
+    /* Usar ps -fu */
+    printf("Aquí tienes el ps -fu usuario, para verificar que todo está bien:\n");
     pid_ps = ejecutar_ps(); 
     if (pid_ps == -1)
     {
@@ -163,8 +165,11 @@ int main(int argc, char *argv[])
         return 1;
     }
     waitpid(pid_ps, NULL, 0);
+    printf("Fin del ps -fu $USER\n");
 
-    /* TODO: Matar */
+    /* Matar */
+    printf("Mato a todos los procesos hijos\n");
+    kill(0, SIGINT);
 
     return 0;
 }
