@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <math.h>
+#include <sys/time.h>
 
 #define __USE_POSIX
 
@@ -16,13 +17,14 @@
 void mente(pid_t suBoloI, pid_t suBoloD);
 
 int engendrar(int n, int *args, char *bolos);
-
-/*
- * Esta función se auto documenta bien
- */
+/* Convierte un entero a un string */
 char* toString(int v);
-
+/* Función vacía para pasársela a sigaction */
 void nonada(int signum);
+/* Utiliza gettimeofday para decidir qué va a hacer el bolo una vez lo han
+ * tirado */
+int elegir_accion(void);
+
 
 int main(int argc, char *argv[])
 {
@@ -30,7 +32,7 @@ int main(int argc, char *argv[])
     pid_t pid_H, pid_I, pid_E, pid_B, pid_C;
     
     /* Comprobar P mirando si el primer argumento acaba con "bolos" */
-    if (strcmp(strlen(argv[0]) - 6 + argv[0], "bolos"))
+    if (strstr(argv[0], "bolos") != NULL)
     {
         /* Acaba en bolos, es P */
         switch (fork())
@@ -44,6 +46,7 @@ int main(int argc, char *argv[])
 
             default:
                 printf("P muere\n");
+                printf("P: %d\n", getpid());
                 exit(0);
         }
     }
@@ -210,8 +213,28 @@ void mente(pid_t suBoloI, pid_t suBoloD)
      * que nos han tirado
      */
     sigsuspend(&conjunto_sin_SIGTERM);
-
     /* Me tiraron :( */
+    printf("[%d] He sido tirado :(\n", getpid());
+
+    /* Procedemos a tirar a los bolos que nos corresponda */
+    switch (elegir_accion()) {
+        case 0:
+            printf("[%d] No tiro a nadie\n", getpid());
+            break;
+        case 1:
+            printf("[%d] Tiro al bolo de la izq.\n", getpid());
+            kill(suBoloI, SIGTERM);
+            break;
+        case 2:
+            printf("[%d] Tiro al bolo de de la dcha.\n", getpid());
+            kill(suBoloD, SIGTERM);
+            break;
+        case 3:
+            printf("[%d] Tiro ambos bolos\n", getpid());
+            kill(suBoloI, SIGTERM);
+            kill(suBoloD, SIGTERM);
+            break;
+    }
 
     /* Fin del código de verdad */
 
@@ -222,6 +245,16 @@ void mente(pid_t suBoloI, pid_t suBoloD)
     if(sigprocmask(SIG_SETMASK,&conjunto_viejo,NULL)==-1) exit(1);
 
     exit(0);
+}
+
+int elegir_accion(void)
+{
+    struct timeval tv;
+    return 3;
+
+    /* TODO: Quitar el return de arriba. Por ahora devuelve siempre 3. */
+    gettimeofday(&tv, NULL);
+    return tv.tv_usec % 4;
 }
 
 /*
