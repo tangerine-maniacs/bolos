@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
         exit(2);
     }
 
-    args[0] = 'G'; args[1] = -1; args[2] = -1;  // G no tiene suBolos
+    args[0] = 'G'; args[1] = -1; args[2] = -1;     // G no tiene suBolos
     args[3] = 'D'; args[4] = -1; args[5] = pid_H;  // D tiene H como suBoloD
     args[6] = 'B'; args[7] = -1; args[8] = pid_E;  // B tiene E como suBoloD
     pid_B = engendrar(3, args, argv[1]);
@@ -225,30 +225,18 @@ void mente(pid_t suBoloI, pid_t suBoloD)
             case 1:
                 printf("[%d] Tiro al bolo de la izq (%d).\n", getpid(),
                        suBoloI);
-                if (kill(suBoloI, SIGTERM) == -1)
-                {
-                    printf("Error al tirar (%d): %s", suBoloI, strerror(errno));
-                }
+                kill(suBoloI, SIGTERM);
                 break;
             case 2:
                 printf("[%d] Tiro al bolo de de la dcha (%d).\n", getpid(),
                        suBoloD);
-                if (kill(suBoloD, SIGTERM) == -1)
-                {
-                    printf("Error al tirar (%d): %s", suBoloD, strerror(errno));
-                }
+                kill(suBoloD, SIGTERM);
                 break;
             case 3:
                 printf("[%d] Tiro ambos bolos (%d y %d)\n", getpid(), suBoloI,
                        suBoloD);
-                if (kill(suBoloI, SIGTERM) == -1)
-                {
-                    printf("Error al tirar (%d): %s", suBoloI, strerror(errno));
-                }
-                if (kill(suBoloD, SIGTERM) == -1)
-                {
-                    printf("Error al tirar (%d): %s", suBoloD, strerror(errno));
-                }
+                kill(suBoloI, SIGTERM);
+                kill(suBoloD, SIGTERM);
                 break;
         }
     }
@@ -358,7 +346,7 @@ int engendrar(int n, int *args, char *argv0_inicial)
                   toString(suBoloD), NULL);
 
             /* Si llegamos aquí, algo ha fallado */
-            perror("Se ha llegado al tope de ejecutar. (4)\n");
+            perror("Se ha llegado al tope de engendrar. (4)\n");
             exit(4);
 
         default:
