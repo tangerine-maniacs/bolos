@@ -42,10 +42,10 @@ int main(int argc, char *argv[])
 
             case 0:
                 execl(argv[0], "A", argv[0], NULL);
+                printf("A: %d\n", getpid());
 
             default:
                 printf("P muere\n");
-                printf("P: %d\n", getpid());
                 exit(0);
         }
     }
@@ -108,21 +108,15 @@ int main(int argc, char *argv[])
      * entero, y lo pasamos como entero, para que nos resulte más sencillo
      * de manejar (sólo tenemos que pasar una array).
      */
-    args[0] = 'H';
-    args[1] = -1;
-    args[2] = -1;
+    args[0] = 'H'; args[1] = -1; args[2] = -1;
     pid_H = engendrar(1, args, argv[1]);
 
-    args[0] = 'I';
-    args[1] = -1;
-    args[2] = -1;
+    args[0] = 'I'; args[1] = -1; args[2] = -1;
     pid_I = engendrar(1, args, argv[1]);
 
     /* === Engendramos a E con H e I como hijos                          ===
      */
-    args[0] = 'E';
-    args[1] = pid_H;
-    args[2] = pid_I;
+    args[0] = 'E'; args[1] = pid_H; args[2] = pid_I;
     pid_E = engendrar(1, args, argv[1]);
 
     free(args); /* Liberamos la memoria del malloc anterior. */
@@ -138,29 +132,17 @@ int main(int argc, char *argv[])
         exit(2);
     }
 
-    args[0] = 'G';
-    args[1] = -1;
-    args[2] = -1;  // G no tiene suBolos
-    args[3] = 'D';
-    args[4] = -1;
-    args[5] = pid_H;  // D tiene H como suBoloD
-    args[6] = 'B';
-    args[7] = -1;
-    args[8] = pid_E;  // B tiene E como suBoloD
+    args[0] = 'G'; args[1] = -1; args[2] = -1;  // G no tiene suBolos
+    args[3] = 'D'; args[4] = -1; args[5] = pid_H;  // D tiene H como suBoloD
+    args[6] = 'B'; args[7] = -1; args[8] = pid_E;  // B tiene E como suBoloD
     pid_B = engendrar(3, args, argv[1]);
 
     /* === Para CFJ, le pasamos a engendrar los datos de C, y sus hijos, ===
      * === F y J.                                                        ===
      */
-    args[0] = 'J';
-    args[1] = -1;
-    args[2] = -1;  // J no tiene suBolos
-    args[3] = 'F';
-    args[4] = pid_I;
-    args[5] = -1;  // F tiene I como suBoloI
-    args[6] = 'C';
-    args[7] = pid_E;
-    args[8] = -1;  // C tiene E como suBoloI
+    args[0] = 'J'; args[1] = -1; args[2] = -1;  // J no tiene suBolos
+    args[3] = 'F'; args[4] = pid_I; args[5] = -1;  // F tiene I como suBoloI
+    args[6] = 'C'; args[7] = pid_E; args[8] = -1;  // C tiene E como suBoloI
     pid_C = engendrar(3, args, argv[1]);
 
     free(args); /* Liberamos la memoria del malloc anterior. */
