@@ -14,7 +14,7 @@
 /*
  * Función principal de todos los bolos una vez creados
  */
-int mente(pid_t suBoloI, pid_t suBoloD);
+int mente(pid_t suBoloI, pid_t suBoloD, int *tiradoI, int *tiradoD);
 
 int engendrar(int n, int *args, char *bolos);
 /* Convierte un entero a un string */
@@ -25,10 +25,12 @@ void nonada(int signum);
  * tirado */
 int elegir_accion(void);
 pid_t ejecutar_ps(void);
+void imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
+                     pid_t pid_C, int tirado_B, int tirado_C);
 
 int main(int argc, char *argv[])
 {
-    int *args, retorno_mente;
+    int *args, retorno_mente, tirado_B, tirado_C;
     pid_t pid_H, pid_I, pid_E, pid_B, pid_C;
     pid_t pid_ps;
 
@@ -77,7 +79,7 @@ int main(int argc, char *argv[])
              *   - pid del bolo de la derecha
              * Este es el caso para cualquier bolo que no sea A.
              */
-            exit(mente(atoi(argv[2]), atoi(argv[3])));
+            exit(mente(atoi(argv[2]), atoi(argv[3]), NULL, NULL));
     }
 
     /*
@@ -147,15 +149,16 @@ int main(int argc, char *argv[])
      * Ejecutamos mente para A, como si fuera un bolo normal, y luego
      * realizamos el comportamiento exclusivo de A.
      */
-    retorno_mente = mente(pid_B, pid_C);
+    retorno_mente = mente(pid_B, pid_C, &tirado_B, &tirado_C);
     if (retorno_mente != 0)   /* Si mente ha fallado, salimos */
         return retorno_mente;
 
     /* Dormir */
     printf("A duerme durante 4 segundos...\n");
     sleep(4);
-    /* TODO: Imprimir dibujo */
-    
+    /* Imprimir dibujo */
+    imprimir_dibujo(pid_H, pid_I, pid_E, pid_B, pid_C, tirado_B, tirado_C);
+
     /* Usar ps -fu */
     printf("Aquí tienes el ps -fu usuario, para verificar que todo está bien:\n");
     pid_ps = ejecutar_ps(); 
@@ -179,7 +182,7 @@ void nonada(int signum) {}
  * Esta función se encarga de manejar la lógica de los bolos una vez se han
  * creado.
  */
-int mente(pid_t suBoloI, pid_t suBoloD)
+int mente(pid_t suBoloI, pid_t suBoloD, int *tiradoI, int *tiradoD)
 {
     /*
      * Creamos un conjunto de bloqueo de señales con SIGTERM, y otro sin
@@ -249,17 +252,21 @@ int mente(pid_t suBoloI, pid_t suBoloD)
                 printf("[%d] Tiro al bolo de la izq (%d).\n", getpid(),
                        suBoloI);
                 kill(suBoloI, SIGTERM);
+                *tiradoI = 1;
                 break;
             case 2:
                 printf("[%d] Tiro al bolo de de la dcha (%d).\n", getpid(),
                        suBoloD);
                 kill(suBoloD, SIGTERM);
+                *tiradoD = 1;
                 break;
             case 3:
                 printf("[%d] Tiro ambos bolos (%d y %d)\n", getpid(), suBoloI,
                        suBoloD);
                 kill(suBoloI, SIGTERM);
                 kill(suBoloD, SIGTERM);
+                *tiradoI = 1;
+                *tiradoD = 1;
                 break;
         }
     }
@@ -278,6 +285,52 @@ int mente(pid_t suBoloI, pid_t suBoloD)
     if (sigprocmask(SIG_SETMASK, &conjunto_viejo, NULL) == -1) return 1;
 
     return 0;
+}
+
+void imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
+                     pid_t pid_C, int tirado_B, int tirado_C)
+{
+  /* TODO: Comprobar que haya puesto los números que corresponden a las letras
+   * bien
+   */
+  /* Hacemos comprobaciones para saber si los bolos están tirados o no
+   * (B->tirado[0], C->tirado[1], D->tirado[2]...)
+   */
+  int tirado[9] = {0};
+
+  if (tirado_B) {
+    tirado[0] = 1; /* B tirado*/
+    /* Comprobar ristra BDG. Para ello vemos el resultado que ha devuelto
+     * B. 
+     * Si es 0, entonces no hay ningún bolo tirado (nunca va a pasar).
+     * Si es 1, entonces sólo está tirado B.
+     * Si es 2, entonces están tirados B y D.
+     * Si es 3, entonces están tirados B, D y G.
+     */
+    
+  }
+
+  if (tirado_C) {
+    tirado[1] = 1; /* C tirado*/
+    /* Comprobar ristra CEF. Análogo a BDG */
+    
+  }
+
+  /* Para el resto de bolos, comprobamos si han devuelto o no, mediante la
+   * versión no bloqueante de waitpid.
+   */
+  /* TODO: Comprobar que waitpid no sea -1? */
+  if (waitpid(pid_E, NULL, WNOHANG) == pid_E) tirado[3] = 1;
+  if (waitpid(pid_H, NULL, WNOHANG) == pid_H) tirado[6] = 1;
+  if (waitpid(pid_I, NULL, WNOHANG) == pid_I) tirado[7] = 1;
+
+  /* Imprimimos el dibujo */
+  printf("   *\n"); /* A siempre está tirado */
+  printf("  %c %c\n", tirado[0] ? '*' : 'B', tirado[1] ? '*' : 'C');
+  printf(" %c %c %c\n", tirado[2] ? '*' : 'D', tirado[3] ? '*' : 'E',
+         tirado[4] ? '*' : 'F');
+  printf("%c %c %c %c\n", tirado[5] ? '*' : 'G', tirado[6] ? '*' : 'H',
+         tirado[7] ? '*' : 'I', tirado[8] ? '*' : 'J');
 }
 
 pid_t ejecutar_ps(void)
