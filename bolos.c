@@ -14,7 +14,7 @@
 /*
  * Función principal de todos los bolos una vez creados
  */
-void mente(pid_t suBoloI, pid_t suBoloD);
+int mente(pid_t suBoloI, pid_t suBoloD);
 
 int engendrar(int n, int *args, char *bolos);
 /* Convierte un entero a un string */
@@ -24,11 +24,13 @@ void nonada(int signum);
 /* Utiliza gettimeofday para decidir qué va a hacer el bolo una vez lo han
  * tirado */
 int elegir_accion(void);
+pid_t ejecutar_ps(void);
 
 int main(int argc, char *argv[])
 {
-    int *args;
+    int *args, retorno_mente;
     pid_t pid_H, pid_I, pid_E, pid_B, pid_C;
+    pid_t pid_ps;
 
     /* Comprobar P mirando si el primer argumento acaba con "bolos" */
     if (strstr(argv[0], "bolos") != NULL)
@@ -75,13 +77,7 @@ int main(int argc, char *argv[])
              *   - pid del bolo de la derecha
              * Este es el caso para cualquier bolo que no sea A.
              */
-            mente(atoi(argv[2]), atoi(argv[3]));
-
-            /* No se debería llegar a este punto, handle hace exit. */
-            perror(
-                "Ejecutado el tope de después de handle para el caso"
-                "general (2)\n");
-            exit(2);
+            exit(mente(atoi(argv[2]), atoi(argv[3])));
     }
 
     /*
@@ -147,8 +143,30 @@ int main(int argc, char *argv[])
 
     free(args); /* Liberamos la memoria del malloc anterior. */
 
-    // At this point, pins 3, 5, 6 and 9 are unknown
-    mente(pid_B, pid_C);
+    /* 
+     * Ejecutamos mente para A, como si fuera un bolo normal, y luego
+     * realizamos el comportamiento exclusivo de A.
+     */
+    retorno_mente = mente(pid_B, pid_C);
+    if (retorno_mente != 0)   /* Si mente ha fallado, salimos */
+        return retorno_mente;
+
+    /* Dormir */
+    sleep(4);
+    /* TODO: Imprimir dibujo */
+    
+    /* TODO: Usar ps -fu */
+    pid_ps = ejecutar_ps(); 
+    if (pid_ps == -1)
+    {
+        perror("Error al ejecutar ps -fu $USER\n");
+        return 1;
+    }
+    waitpid(pid_ps, NULL, 0);
+
+    /* TODO: Matar */
+
+    return 0;
 }
 
 void nonada(int signum) {}
@@ -156,7 +174,7 @@ void nonada(int signum) {}
  * Esta función se encarga de manejar la lógica de los bolos una vez se han
  * creado.
  */
-void mente(pid_t suBoloI, pid_t suBoloD)
+int mente(pid_t suBoloI, pid_t suBoloD)
 {
     /*
      * Creamos un conjunto de bloqueo de señales con SIGTERM, y otro sin
@@ -175,7 +193,7 @@ void mente(pid_t suBoloI, pid_t suBoloD)
     sigemptyset(&conjunto_SIGTERM);
     sigaddset(&conjunto_SIGTERM, SIGTERM);
     if (sigprocmask(SIG_BLOCK, &conjunto_SIGTERM, &conjunto_viejo) == -1)
-        exit(1);
+        return 1;
 
     /*
      * Creamos una estructura de sigaction como la vieja pero sin SIGTERM.
@@ -198,7 +216,7 @@ void mente(pid_t suBoloI, pid_t suBoloD)
     accion_nueva.sa_flags = SA_RESTART; /* SA_RESTART es porque Polar ha dicho
                                          * que es lo mejor.
                                          */
-    if (sigaction(SIGTERM, &accion_nueva, &accion_vieja) == -1) exit(1);
+    if (sigaction(SIGTERM, &accion_nueva, &accion_vieja) == -1) return 1;
 
     /* Aquí ya tenemos código de verdad. */
     if (suBoloI != -1)
@@ -251,10 +269,24 @@ void mente(pid_t suBoloI, pid_t suBoloD)
     /*
      * Restauramos el conjunto de señales viejo, y la acción vieja de SIGTERM.
      */
-    if (sigaction(SIGTERM, &accion_vieja, NULL) == -1) exit(1);
-    if (sigprocmask(SIG_SETMASK, &conjunto_viejo, NULL) == -1) exit(1);
+    if (sigaction(SIGTERM, &accion_vieja, NULL) == -1) return 1;
+    if (sigprocmask(SIG_SETMASK, &conjunto_viejo, NULL) == -1) return 1;
 
-    exit(0);
+    return 0;
+}
+
+pid_t ejecutar_ps(void)
+{
+    pid_t pid;
+    switch (pid = fork()) {
+        case -1:
+            return -1;
+        case 0:
+            execlp("ps", "ps", "-fu", getenv("USER"), NULL);
+            return -1;
+        default:
+            return pid;
+    }
 }
 
 int elegir_accion(void)
