@@ -22,6 +22,7 @@ int engendrar(int n, int *args, char *bolos);
  */
 char* toString(int v);
 
+void manejadora_sigterm(int signum);
 
 int main(int argc, char *argv[])
 {
@@ -148,12 +149,64 @@ int main(int argc, char *argv[])
     mente(pid_B, pid_C);
 }
 
+void manejadora_sigterm(int signum)
+{
+
+}
 /*
  * Esta función se encarga de manejar la lógica de los bolos una vez se han
  * creado.
  */
 void mente(pid_t suBoloI, pid_t suBoloD)
 {
+    /* 
+     * Creamos un conjunto de bloqueo de señales con SIGTERM, y otro sin 
+     * SIGTERM. También guardamos el conjunto de señales viejo, para poder restaurarlo
+     * cuando terminemos.
+     */
+    sigset_t conjunto_SIGTERM, conjunto_viejo, conjunto_sin_SIGTERM;
+    struct sigaction accion_nueva, accion_vieja;
+
+    /* 
+     * Creamos una máscara de bloqueo de señales que tenga sólo SIGTERM.
+     * Guardamos el conjunto de señales viejo para poder restaurarlo cuando
+     * terminemos.
+     */
+    sigemptyset(&conjunto_SIGTERM);
+    sigaddset(&conjunto_SIGTERM, SIGTERM);
+    if (sigprocmask(SIG_BLOCK, &conjunto_SIGTERM, &conjunto_viejo)==-1)
+        exit(1);
+
+    /*
+     * Creamos una estructura de sigaction como la vieja pero sin SIGTERM.
+     * Para ello, hacemos la copia del conjunto viejo y le quitamos la señal
+     * de SIGTERM.
+     */
+    conjunto_sin_SIGTERM=conjunto_viejo;
+    sigdelset(&conjunto_sin_SIGTERM,SIGTERM);
+
+    /* 
+     * Creamos una estructura de sigaction para poder manejar la señal
+     * SIGTERM. Guardamos la acción vieja. 
+     */
+    if(sigaction(SIGTERM,&accion_nueva,&accion_vieja)==-1) 
+        exit(1);
+
+    /* 
+     * Código útil aquí.
+     */
+    //while(segundos>=0)
+    //   {alarm(1);
+    //    sigsuspend(&conjunto_sin_SIGSIGTERM); /* �Y el error? */
+    //    printf("%d\n",segundos);
+    //    segundos--;}
+
+    /* 
+     * Restauramos el conjunto de señales viejo, y la acción vieja de SIGTERM.
+     */
+    if(sigaction(SIGTERM,&accion_vieja,NULL)==-1) exit(1);
+    if(sigprocmask(SIG_SETMASK,&conjunto_viejo,NULL)==-1) exit(1);
+
     if (suBoloI != -1)
         printf("%d has %d and %d as sub-pins\n", getpid(), suBoloI, suBoloD);
     else
