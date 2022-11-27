@@ -216,24 +216,28 @@ void mente(pid_t suBoloI, pid_t suBoloD)
     /* Me tiraron :( */
     printf("[%d] He sido tirado :(\n", getpid());
 
-    /* Procedemos a tirar a los bolos que nos corresponda */
-    switch (elegir_accion()) {
-        case 0:
-            printf("[%d] No tiro a nadie\n", getpid());
-            break;
-        case 1:
-            printf("[%d] Tiro al bolo de la izq.\n", getpid());
-            kill(suBoloI, SIGTERM);
-            break;
-        case 2:
-            printf("[%d] Tiro al bolo de de la dcha.\n", getpid());
-            kill(suBoloD, SIGTERM);
-            break;
-        case 3:
-            printf("[%d] Tiro ambos bolos\n", getpid());
-            kill(suBoloI, SIGTERM);
-            kill(suBoloD, SIGTERM);
-            break;
+    /* Si tenemos bolos debajo de nosotros, procedemos a tirarlos. */
+    if (suBoloI != -1 && suBoloD != -1) {
+      switch (elegir_accion()) {
+          case 0:
+              printf("[%d] No tiro a nadie\n", getpid());
+              break;
+          case 1:
+              printf("[%d] Tiro al bolo de la izq (%d).\n", getpid(), suBoloI);
+              kill(suBoloI, SIGTERM);
+              break;
+          case 2:
+              printf("[%d] Tiro al bolo de de la dcha (%d).\n", getpid(), suBoloD);
+              kill(suBoloD, SIGTERM);
+              break;
+          case 3:
+              printf("[%d] Tiro ambos bolos (%d y %d)\n", getpid(), suBoloI, suBoloD);
+              kill(suBoloI, SIGTERM);
+              kill(suBoloD, SIGTERM);
+              break;
+      }
+    } else {
+      printf("[%d] No tengo bolos debajo de mi, no tiro a nadie.\n", getpid());
     }
 
     /* Fin del código de verdad */
