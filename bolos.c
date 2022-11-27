@@ -151,7 +151,8 @@ int main(int argc, char *argv[])
 
 void manejadora_sigterm(int signum)
 {
-
+    /* ¡Me tiraron! */
+    printf("Me tiraron! :(\n");
 }
 /*
  * Esta función se encarga de manejar la lógica de los bolos una vez se han
@@ -164,7 +165,8 @@ void mente(pid_t suBoloI, pid_t suBoloD)
      * SIGTERM. También guardamos el conjunto de señales viejo, para poder restaurarlo
      * cuando terminemos.
      */
-    sigset_t conjunto_SIGTERM, conjunto_viejo, conjunto_sin_SIGTERM;
+    sigset_t conjunto_SIGTERM, conjunto_viejo, conjunto_sin_SIGTERM,
+             conjunto_vacio;
     struct sigaction accion_nueva, accion_vieja;
 
     /* 
@@ -188,18 +190,32 @@ void mente(pid_t suBoloI, pid_t suBoloD)
     /* 
      * Creamos una estructura de sigaction para poder manejar la señal
      * SIGTERM. Guardamos la acción vieja. 
+     * La máscara de bloqueo de señales para esta acción va a ser el conjunto
+     * vacío, lo que significa que cualquier otra señal puede interrumpir
+     * la ejecución de esta acción
      */
+    sigemptyset(&conjunto_vacio);
+    accion_nueva.sa_handler=manejadora_sigterm;
+    accion_nueva.sa_mask=conjunto_vacio;
+    accion_nueva.sa_flags=SA_RESTART; /* SA_RESTART es porque Polar ha dicho
+                                       * que es lo mejor.
+                                       */
     if(sigaction(SIGTERM,&accion_nueva,&accion_vieja)==-1) 
         exit(1);
 
+    /* Aquí ya tenemos código de verdad. */
+    if (suBoloI != -1)
+        printf("%d has %d and %d as sub-pins\n", getpid(), suBoloI, suBoloD);
+    else
+        printf("%d doesnt have sub-pins :(\n", getpid());
+
     /* 
-     * Código útil aquí.
+     * Esperamos a que nos llegue una señal de SIGTERM. Significaría
+     * que nos han tirado
      */
-    //while(segundos>=0)
-    //   {alarm(1);
-    //    sigsuspend(&conjunto_sin_SIGSIGTERM); /* �Y el error? */
-    //    printf("%d\n",segundos);
-    //    segundos--;}
+    sigsuspend(&conjunto_sin_SIGTERM);
+
+    /* Fin del código de verdad */
 
     /* 
      * Restauramos el conjunto de señales viejo, y la acción vieja de SIGTERM.
@@ -207,13 +223,6 @@ void mente(pid_t suBoloI, pid_t suBoloD)
     if(sigaction(SIGTERM,&accion_vieja,NULL)==-1) exit(1);
     if(sigprocmask(SIG_SETMASK,&conjunto_viejo,NULL)==-1) exit(1);
 
-    if (suBoloI != -1)
-        printf("%d has %d and %d as sub-pins\n", getpid(), suBoloI, suBoloD);
-    else
-        printf("%d doesnt have sub-pins :(\n", getpid());
-
-    while (1)
-        pause();
     exit(0);
 }
 
