@@ -27,7 +27,7 @@ int elegir_accion(void);
 
 int main(int argc, char *argv[])
 {
-    int argv0size, *args;
+    int *args;
     pid_t pid_H, pid_I, pid_E, pid_B, pid_C;
 
     /* Comprobar P mirando si el primer argumento acaba con "bolos" */
