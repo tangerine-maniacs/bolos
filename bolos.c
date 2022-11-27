@@ -22,7 +22,7 @@ int engendrar(int n, int *args, char *bolos);
  */
 char* toString(int v);
 
-void manejadora_sigterm(int signum);
+void nonada(int signum);
 
 int main(int argc, char *argv[])
 {
@@ -149,11 +149,7 @@ int main(int argc, char *argv[])
     mente(pid_B, pid_C);
 }
 
-void manejadora_sigterm(int signum)
-{
-    /* ¡Me tiraron! */
-    printf("Me tiraron! :(\n");
-}
+void nonada(int signum) {}
 /*
  * Esta función se encarga de manejar la lógica de los bolos una vez se han
  * creado.
@@ -195,7 +191,7 @@ void mente(pid_t suBoloI, pid_t suBoloD)
      * la ejecución de esta acción
      */
     sigemptyset(&conjunto_vacio);
-    accion_nueva.sa_handler=manejadora_sigterm;
+    accion_nueva.sa_handler=nonada;
     accion_nueva.sa_mask=conjunto_vacio;
     accion_nueva.sa_flags=SA_RESTART; /* SA_RESTART es porque Polar ha dicho
                                        * que es lo mejor.
@@ -214,6 +210,8 @@ void mente(pid_t suBoloI, pid_t suBoloD)
      * que nos han tirado
      */
     sigsuspend(&conjunto_sin_SIGTERM);
+
+    /* Me tiraron :( */
 
     /* Fin del código de verdad */
 
