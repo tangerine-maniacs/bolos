@@ -16,7 +16,7 @@
 /*
  * Función principal de todos los bolos una vez creados
  */
-int mente(pid_t suBoloI, pid_t suBoloD, int *tiradoI, int *tiradoD);
+int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D);
 
 int engendrar(int n, int *args, char *bolos);
 /* Convierte un entero a un string */
@@ -32,7 +32,7 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
 
 int main(int argc, char *argv[])
 {
-    int *args, retorno_mente, tirado_B, tirado_C;
+    int *args, retorno_mente, subI, subD, hijos_muertos, tirado_D, tirado_I, stat;
     pid_t pid_H, pid_I, pid_E, pid_B, pid_C;
     pid_t pid_ps;
 
@@ -81,7 +81,24 @@ int main(int argc, char *argv[])
              *   - pid del bolo de la derecha
              * Este es el caso para cualquier bolo que no sea A.
              */
-            exit(mente(atoi(argv[2]), atoi(argv[3]), NULL, NULL));
+            mente(atoi(argv[2]), atoi(argv[3]), &tirado_I, &tirado_D);
+
+            /* Contamos niños muertos (si es que tenemos) */
+            hijos_muertos = 0;
+            /*
+             * B y D esperarán a sus hijos si han matado a algo por la izquierda
+             * y C y F lo harán si han matado algo por la derecha.
+             */
+            if (((argv[0][0] == 'B' || argv[0][0] == 'D') && tirado_I) ||
+                ((argv[0][0] == 'C' || argv[0][0] == 'F') && tirado_D))
+            {
+                wait(&stat);
+                hijos_muertos += WEXITSTATUS(stat);
+            }
+
+            printf("[%d %s] Se me han muerto %d hijos :)\n", getpid(), argv[0], hijos_muertos);
+
+            exit(hijos_muertos + 1);
     }
 
     /*
@@ -151,7 +168,7 @@ int main(int argc, char *argv[])
      * Ejecutamos mente para A, como si fuera un bolo normal, y luego
      * realizamos el comportamiento exclusivo de A.
      */
-    retorno_mente = mente(pid_B, pid_C, &tirado_B, &tirado_C);
+    retorno_mente = mente(pid_B, pid_C, &tirado_I, &tirado_D);
     if (retorno_mente != 0)   /* Si mente ha fallado, salimos */
         return retorno_mente;
 
@@ -159,7 +176,7 @@ int main(int argc, char *argv[])
     printf("A duerme durante 4 segundos...\n");
     sleep(4);
     /* Imprimir dibujo */
-    imprimir_dibujo(pid_H, pid_I, pid_E, pid_B, pid_C, tirado_B, tirado_C);
+    imprimir_dibujo(pid_H, pid_I, pid_E, pid_B, pid_C, tirado_I, tirado_D);
 
     /* Usar ps -fu */
     printf("Aquí tienes el ps -fu usuario, para verificar que todo está bien:\n");
@@ -184,7 +201,7 @@ void nonada(int signum) {}
  * Esta función se encarga de manejar la lógica de los bolos una vez se han
  * creado.
  */
-int mente(pid_t suBoloI, pid_t suBoloD, int *tiradoI, int *tiradoD)
+int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
 {
     /*
      * Creamos un conjunto de bloqueo de señales con SIGTERM, y otro sin
@@ -249,26 +266,33 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tiradoI, int *tiradoD)
         {
             case 0:
                 printf("[%d] No tiro a nadie\n", getpid());
+                *tirado_I = 0;
+                *tirado_D = 0;
                 break;
+
             case 1:
                 printf("[%d] Tiro al bolo de la izq (%d).\n", getpid(),
                        suBoloI);
                 kill(suBoloI, SIGTERM);
-                *tiradoI = 1;
+                *tirado_I = 1;
+                *tirado_D = 0;
                 break;
+
             case 2:
                 printf("[%d] Tiro al bolo de de la dcha (%d).\n", getpid(),
                        suBoloD);
                 kill(suBoloD, SIGTERM);
-                *tiradoD = 1;
+                *tirado_I = 0;
+                *tirado_D = 1;
                 break;
+
             case 3:
                 printf("[%d] Tiro ambos bolos (%d y %d)\n", getpid(), suBoloI,
                        suBoloD);
                 kill(suBoloI, SIGTERM);
                 kill(suBoloD, SIGTERM);
-                *tiradoI = 1;
-                *tiradoD = 1;
+                *tirado_I = 1;
+                *tirado_D = 1;
                 break;
         }
     }
@@ -276,6 +300,9 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tiradoI, int *tiradoD)
     {
         printf("[%d] No tengo bolos debajo de mi, no tiro a nadie.\n",
                getpid());
+
+        *tirado_I = 0;
+        *tirado_D = 0;
     }
 
     /* Fin del código de verdad */
@@ -292,85 +319,102 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tiradoI, int *tiradoD)
 int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
                      pid_t pid_C, int tirado_B, int tirado_C)
 {
-  /* TODO: Comprobar que haya puesto los números que corresponden a las letras
-   * bien
-   */
-  /* Hacemos comprobaciones para saber si los bolos están tirados o no
-   * (B->tirado[0], C->tirado[1], D->tirado[2]...)
-   */
-  int tirado[9] = {0};
-  int num_en_pie, stat;
-
-  if (tirado_B) {
-    tirado[0] = 1; /* B tirado*/
-    /* Comprobar ristra BDG. Para ello vemos el resultado que ha devuelto
-     * B. 
-     * Si es 0, entonces no hay ningún bolo tirado (nunca va a pasar).
-     * Si es 1, entonces sólo está tirado B.
-     * Si es 2, entonces están tirados B y D.
-     * Si es 3, entonces están tirados B, D y G.
+    /* 
+     * no, no estaban bien. contar letras es sorprendentemente complicado
      */
+    int tirado[9] = {0};
+    int num_caidos, stat;
 
-    waitpid(pid_B, &stat, 0);
-    num_en_pie = WEXITSTATUS(stat);
-    switch (num_en_pie) {
-      case 0: /* Nunca va a pasar */
-        return -1;
-      case 1: /* B tirado */
-        break;
-      case 2: /* B y D tirados */
-        tirado[2] = 1;
-        break;
-      case 3: /* B, D y G tirados */
-        tirado[2] = 1;
-        tirado[5] = 1;
-        break;
+    /*
+     * El valor de retorno de los procesos es el número de bolos HIJOS que han
+     * caído (incluído el que retorna). Por lo que si los bolos B y D caen, B
+     * retornará 2. Así podemos saber el número de bolos que han caído en las
+     * ristras.
+     */
+    /*
+     * El código quedaba mejor haciendo estas dos no-bloqueantes :(
+     * mala suerte supongo
+     */
+    if (tirado_B)
+    {
+        waitpid(pid_B, &stat, 0);
+        num_caidos = WEXITSTATUS(stat);
+        switch (num_caidos)
+        {
+            case 0:
+                perror("malo, terrible\n");
+                return -1;
+
+            /* switch truco 🤙*/
+            case 3:
+                tirado[5] = 1;
+
+            case 2:
+                tirado[2] = 1;
+
+            case 1:
+                /*
+                 * esta la podría hacer fuera, pero
+                 * el switch truco quedaba peor :(
+                */
+                tirado[0] = 1; 
+        }
     }
 
-  }
+    if (tirado_C)
+    {
+        waitpid(pid_C, &stat, 0);
+        num_caidos = WEXITSTATUS(stat);
 
-  if (tirado_C) {
-    tirado[1] = 1; /* C tirado*/
-    /* Comprobar ristra CEF. Análogo a BDG */
-    
-    waitpid(pid_C, &stat, 0);
-    num_en_pie = WEXITSTATUS(stat);
-    switch (num_en_pie) {
-      case 0: /* Nunca va a pasar */
-        return -1;
-      case 1: /* C tirado */
-        break;
-      case 2: /* E y F tirados */
-        tirado[3] = 1;
-        break;
-      case 3: /* C, E y F tirados */
-        tirado[3] = 1;
-        tirado[4] = 1;
-        break;
+        switch (num_caidos)
+        {
+            case 0:
+                perror("malo, terrible otra vez\n");
+                return -1;
+
+            case 3:
+                tirado[8] = 1;
+
+            case 2:
+                tirado[4] = 1;
+
+            case 1:
+                tirado[1] = 1;
+        }
     }
-  }
 
-  /* Para el resto de bolos, comprobamos si han devuelto o no, mediante la
-   * versión no bloqueante de waitpid.
-   * waitpid devuelve:
-   *  -1 si no hay ningún hijo que haya terminado
-   *  0 si el hijo no ha terminado
-   *  pid del hijo si ha terminado
-   */
-  /* TODO: Comprobar que waitpid no sea -1 (error)? */
-  if (waitpid(pid_E, NULL, WNOHANG) == pid_E) tirado[3] = 1;
-  if (waitpid(pid_H, NULL, WNOHANG) == pid_H) tirado[6] = 1;
-  if (waitpid(pid_I, NULL, WNOHANG) == pid_I) tirado[7] = 1;
+    /* Para el resto de bolos, comprobamos si han devuelto o no, mediante la
+     * versión no bloqueante de waitpid.
+     * waitpid devuelve:
+     *  -1 si no hay ningún hijo que haya terminado
+     *  0 si el hijo no ha terminado
+     *  pid del hijo si ha terminado
+     */
+    /* TODO: Comprobar que waitpid no sea -1 (error)? */
+    if (waitpid(pid_E, NULL, WNOHANG) == pid_E) tirado[3] = 1;
+    if (waitpid(pid_H, NULL, WNOHANG) == pid_H) tirado[6] = 1;
+    if (waitpid(pid_I, NULL, WNOHANG) == pid_I) tirado[7] = 1;
 
-  /* Imprimimos el dibujo */
-  printf("   *\n"); /* A siempre está tirado */
-  printf("  %c %c\n", tirado[0] ? '*' : 'B', tirado[1] ? '*' : 'C');
-  printf(" %c %c %c\n", tirado[2] ? '*' : 'D', tirado[3] ? '*' : 'E',
-         tirado[4] ? '*' : 'F');
-  printf("%c %c %c %c\n", tirado[5] ? '*' : 'G', tirado[6] ? '*' : 'H',
-         tirado[7] ? '*' : 'I', tirado[8] ? '*' : 'J');
+    /* 
+     * Limpiamos la pantalla antes de escribir
+     * system("clear"); :(
+     *
+     * \e[2J    limpia la pantalla y limpia el scrollback buffer
+     * \e[1;1H  mueve el cursor arriba
+     */
+    printf("\e[3J\e[1;1H");
 
-  return 0;
+    /* Imprimimos el dibujo */
+    printf("\n");
+    printf("   *\n"); /* A siempre está tirado */
+    printf("  %c %c\n", tirado[0] ? '*' : 'B', tirado[1] ? '*' : 'C');
+    printf(" %c %c %c\n", tirado[2] ? '*' : 'D', tirado[3] ? '*' : 'E',
+           tirado[4] ? '*' : 'F');
+    printf("%c %c %c %c\n", tirado[5] ? '*' : 'G', tirado[6] ? '*' : 'H',
+           tirado[7] ? '*' : 'I', tirado[8] ? '*' : 'J');
+
+
+    return 0;
 }
 
 pid_t ejecutar_ps(void)
@@ -390,9 +434,7 @@ pid_t ejecutar_ps(void)
 int elegir_accion(void)
 {
     struct timeval tv;
-    return 3;
 
-    /* TODO: Quitar el return de arriba. Por ahora devuelve siempre 3. */
     gettimeofday(&tv, NULL);
     return tv.tv_usec % 4;
 }
