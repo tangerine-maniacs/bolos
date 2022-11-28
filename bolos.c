@@ -9,7 +9,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define __USE_POSIX
+#ifndef __USE_POSIX
+    #define __USE_POSIX
+#endif
 
 /*
  * Función principal de todos los bolos una vez creados
