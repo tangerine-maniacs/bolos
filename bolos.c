@@ -502,8 +502,6 @@ int engendrar(int n, int *args, char *argv0_inicial)
              * argumentos:
              *      [nombre, argv0_inicial, suBoloI, suBoloD]
              */
-            // TODO: Esto en un ctostr()?
-            //  ~ ctostr no le gusta a mi compilador :(
             name = malloc(2 * sizeof(char));
             if (name == NULL)
             {
@@ -541,3 +539,4 @@ char *toString(int v)
     sprintf(str, "%d", v);
     return str;
 }
+
