@@ -25,7 +25,7 @@ void nonada(int signum);
  * tirado */
 int elegir_accion(void);
 pid_t ejecutar_ps(void);
-void imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
+int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
                      pid_t pid_C, int tirado_B, int tirado_C);
 
 int main(int argc, char *argv[])
@@ -287,7 +287,7 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tiradoI, int *tiradoD)
     return 0;
 }
 
-void imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
+int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
                      pid_t pid_C, int tirado_B, int tirado_C)
 {
   /* TODO: Comprobar que haya puesto los números que corresponden a las letras
@@ -297,6 +297,7 @@ void imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
    * (B->tirado[0], C->tirado[1], D->tirado[2]...)
    */
   int tirado[9] = {0};
+  int num_en_pie, stat;
 
   if (tirado_B) {
     tirado[0] = 1; /* B tirado*/
@@ -307,19 +308,54 @@ void imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
      * Si es 2, entonces están tirados B y D.
      * Si es 3, entonces están tirados B, D y G.
      */
-    
+
+    waitpid(pid_B, &stat, 0);
+    num_en_pie = WEXITSTATUS(stat);
+    switch (num_en_pie) {
+      case 0: /* Nunca va a pasar */
+        return -1;
+      case 1: /* B tirado */
+        break;
+      case 2: /* B y D tirados */
+        tirado[2] = 1;
+        break;
+      case 3: /* B, D y G tirados */
+        tirado[2] = 1;
+        tirado[5] = 1;
+        break;
+    }
+
   }
 
   if (tirado_C) {
     tirado[1] = 1; /* C tirado*/
     /* Comprobar ristra CEF. Análogo a BDG */
     
+    waitpid(pid_C, &stat, 0);
+    num_en_pie = WEXITSTATUS(stat);
+    switch (num_en_pie) {
+      case 0: /* Nunca va a pasar */
+        return -1;
+      case 1: /* C tirado */
+        break;
+      case 2: /* E y F tirados */
+        tirado[3] = 1;
+        break;
+      case 3: /* C, E y F tirados */
+        tirado[3] = 1;
+        tirado[4] = 1;
+        break;
+    }
   }
 
   /* Para el resto de bolos, comprobamos si han devuelto o no, mediante la
    * versión no bloqueante de waitpid.
+   * waitpid devuelve:
+   *  -1 si no hay ningún hijo que haya terminado
+   *  0 si el hijo no ha terminado
+   *  pid del hijo si ha terminado
    */
-  /* TODO: Comprobar que waitpid no sea -1? */
+  /* TODO: Comprobar que waitpid no sea -1 (error)? */
   if (waitpid(pid_E, NULL, WNOHANG) == pid_E) tirado[3] = 1;
   if (waitpid(pid_H, NULL, WNOHANG) == pid_H) tirado[6] = 1;
   if (waitpid(pid_I, NULL, WNOHANG) == pid_I) tirado[7] = 1;
@@ -331,6 +367,8 @@ void imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
          tirado[4] ? '*' : 'F');
   printf("%c %c %c %c\n", tirado[5] ? '*' : 'G', tirado[6] ? '*' : 'H',
          tirado[7] ? '*' : 'I', tirado[8] ? '*' : 'J');
+
+  return 0;
 }
 
 pid_t ejecutar_ps(void)
