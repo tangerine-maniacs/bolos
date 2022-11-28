@@ -230,9 +230,9 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tiradoI, int *tiradoD)
 
     /* Aquí ya tenemos código de verdad. */
     if (suBoloI != -1)
-        printf("%d has %d and %d as sub-pins\n", getpid(), suBoloI, suBoloD);
+        printf("[%d] Tengo debajo a %d y %d\n", getpid(), suBoloI, suBoloD);
     else
-        printf("%d doesnt have sub-pins :(\n", getpid());
+        printf("[%d] No tengo bolos debajo\n", getpid());
 
     /*
      * Esperamos a que nos llegue una señal de SIGTERM. Significaría
