@@ -446,14 +446,11 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
         }
 
         num_caidos = WEXITSTATUS(stat);
-        if (num_caidos == -1)
-        {
-            perror("Error en wait de los bolos\n");
-            return -1;
-        }
-
         switch (num_caidos)
         {
+            case -1:
+                perror("Error en wait de los bolos\n");
+                return -1;
             case 0:
                 perror("num_caidos == 0 cuando tirado_B\n");
                 return -1;
@@ -481,14 +478,11 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
         }
 
         num_caidos = WEXITSTATUS(stat);
-        if (num_caidos == -1)
-        {
-            perror("Error en wait de los bolos\n");
-            return -1;
-        }
-
         switch (num_caidos)
         {
+            case -1:
+                perror("Error en wait de los bolos\n");
+                return -1;
             case 0:
                 perror("num_caidos == 0 cuando tirado_C\n");
                 return -1;
@@ -510,8 +504,7 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
      *  pid del hijo si ha terminado
      */
     waitr = waitpid(pid_E, NULL, WNOHANG);
-    if (waitr == pid_E)
-        tirado[3] = 1;
+    if (waitr == pid_E) tirado[3] = 1;
     else if (waitr == -1)
     {
         perror("Error en waitpid E\n");
