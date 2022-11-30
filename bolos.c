@@ -157,8 +157,10 @@ int main(int argc, char *argv[])
             if (((argv[0][0] == 'B' || argv[0][0] == 'D') && tirado_I) ||
                 ((argv[0][0] == 'C' || argv[0][0] == 'F') && tirado_D))
             {
-                wait(&stat);
-                hijos_muertos += WEXITSTATUS(stat);
+                if (wait(&stat) == -1)
+                    perror("Error al contar los hijos muertos!\n");
+                else
+                    hijos_muertos += WEXITSTATUS(stat);
             }
 
             DEBUG_PRINT("[%d %s] Se me han muerto %d hijos :)\n", getpid(), argv[0], hijos_muertos);
