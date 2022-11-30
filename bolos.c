@@ -367,9 +367,8 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
     sigemptyset(&conjunto_vacio);
     accion_nueva.sa_handler = nonada;
     accion_nueva.sa_mask = conjunto_vacio;
-    accion_nueva.sa_flags = SA_RESTART; /* SA_RESTART es porque Polar ha dicho
-                                         * que es lo mejor.
-                                         */
+    accion_nueva.sa_flags = SA_RESTART; 
+
     if (sigaction(SIGTERM, &accion_nueva, NULL) == -1) return 1;
 
     /* Aquí ya tenemos código de verdad. */
