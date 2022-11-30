@@ -12,13 +12,14 @@
 #ifndef __USE_POSIX
     #define __USE_POSIX
 #endif
-#define __DEBUG
 
-#ifdef __DEBUG
+#ifdef DEBUG
     #define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__)
 #else
     #define DEBUG_PRINT(...) do {} while (0)
 #endif
+
+#define writefacil(str) write(STDOUT_FILENO, (str), strlen(str))
 
 /*
  * Función principal de todos los bolos una vez creados
@@ -53,6 +54,7 @@ int main(int argc, char *argv[])
      */
     sigset_t conjunto_todo;
     sigfillset(&conjunto_todo);
+    sigdelset(&conjunto_todo, SIGINT);
     if (sigprocmask(SIG_BLOCK, &conjunto_todo, NULL) == -1)
         return 1;
 
@@ -232,6 +234,7 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
      */
     sigfillset(&conjunto_sin_SIGTERM);
     sigdelset(&conjunto_sin_SIGTERM, SIGTERM);
+    sigdelset(&conjunto_sin_SIGTERM, SIGINT);
 
     /*
      * Creamos una estructura de sigaction para poder manejar la señal
@@ -341,7 +344,7 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
         switch (num_caidos)
         {
             case 0:
-                perror("malo, terrible\n");
+                perror("num_caidos == 0 cuando tirado_B\n");
                 return -1;
 
             /* switch truco 🤙*/
@@ -365,7 +368,7 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
         switch (num_caidos)
         {
             case 0:
-                perror("malo, terrible otra vez\n");
+                perror("num_caidos == 0 cuando tirado_C\n");
                 return -1;
 
             case 3:
@@ -390,14 +393,20 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
     if (waitpid(pid_I, NULL, WNOHANG) == pid_I) tirado[7] = 1;
 
     /* Imprimimos el dibujo */
-    DEBUG_PRINT("\n");
-    DEBUG_PRINT("   *\n"); /* A siempre está tirado */
-    DEBUG_PRINT("  %c %c\n", tirado[0] ? '*' : 'B', tirado[1] ? '*' : 'C');
-    DEBUG_PRINT(" %c %c %c\n", tirado[2] ? '*' : 'D', tirado[3] ? '*' : 'E',
-           tirado[4] ? '*' : 'F');
-    DEBUG_PRINT("%c %c %c %c\n", tirado[5] ? '*' : 'G', tirado[6] ? '*' : 'H',
-           tirado[7] ? '*' : 'I', tirado[8] ? '*' : 'J');
+    writefacil("\n");
+    writefacil("   *\n"); /* A siempre está tirado */
 
+    writefacil("  "); writefacil(tirado[0] ? "*" : "B"); writefacil(" "); 
+    writefacil(tirado[1] ? "*" : "C"); writefacil("\n");
+
+    writefacil(" "); writefacil(tirado[2] ? "*" : "D"); writefacil(" "); 
+    writefacil(tirado[3] ? "*" : "E"); writefacil(" "); 
+    writefacil(tirado[4] ? "*" : "F"); writefacil("\n");
+
+    writefacil(tirado[5] ? "*" : "G"); writefacil(" ");
+    writefacil(tirado[6] ? "*" : "H"); writefacil(" ");
+    writefacil(tirado[7] ? "*" : "I"); writefacil(" ");
+    writefacil(tirado[8] ? "*" : "J"); writefacil("\n");
     return 0;
 }
 
@@ -490,7 +499,7 @@ int engendrar(int n, int *args, char *argv0_inicial)
             name = malloc(2 * sizeof(char));
             if (name == NULL)
             {
-                fprintf(stderr, "Error al alocar memoria en %c\n", name[0]);
+                perror("Error al alocar memoria para nombre en engendrar");
                 exit(2);
             }
 
