@@ -158,9 +158,16 @@ int main(int argc, char *argv[])
                 ((argv[0][0] == 'C' || argv[0][0] == 'F') && tirado_D))
             {
                 if (wait(&stat) == -1)
-                    perror("Error al contar los hijos muertos!\n");
+                {
+                    exit(-1);
+                }
                 else
+                {
+                    if (WEXITSTATUS(stat) == -1)
+                        exit(-1);
+
                     hijos_muertos += WEXITSTATUS(stat);
+                }
             }
 
             DEBUG_PRINT("[%d %s] Se me han muerto %d hijos :)\n", getpid(), argv[0], hijos_muertos);
@@ -253,7 +260,12 @@ int main(int argc, char *argv[])
         perror("Error al ejecutar ps -fu $USER\n");
         return 1;
     }
-    waitpid(pid_ps, NULL, 0);
+
+    if (waitpid(pid_ps, NULL, 0) == -1)
+    {
+        perror("Error en waitpid ps\n");
+        return 1;
+    }
     DEBUG_PRINT("Fin del ps -fu $USER\n");
 
     /* Matar */
@@ -416,7 +428,7 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
                      pid_t pid_C, int tirado_B, int tirado_C)
 {
     int tirado[9] = {0};
-    int num_caidos, stat;
+    int num_caidos, stat, waitr;
 
     /*
      * El valor de retorno de los procesos es el número de bolos HIJOS que han
@@ -424,14 +436,22 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
      * retornará 2. Así podemos saber el número de bolos que han caído en las
      * ristras.
      */
-    /*
-     * El código quedaba mejor haciendo estas dos no-bloqueantes :(
-     * mala suerte supongo
-     */
     if (tirado_B)
     {
-        waitpid(pid_B, &stat, 0);
+        waitr = waitpid(pid_B, &stat, 0);
+        if (waitr == -1)
+        {
+            perror("Error en waitpid B\n");
+            return -1;
+        }
+
         num_caidos = WEXITSTATUS(stat);
+        if (num_caidos == -1)
+        {
+            perror("Error en wait de los bolos\n");
+            return -1;
+        }
+
         switch (num_caidos)
         {
             case 0:
@@ -453,8 +473,19 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
      */
     if (tirado_C)
     {
-        waitpid(pid_C, &stat, 0);
+        waitr = waitpid(pid_C, &stat, 0);
+        if (waitr == -1)
+        {
+            perror("Error en waitpid C\n");
+            return -1;
+        }
+
         num_caidos = WEXITSTATUS(stat);
+        if (num_caidos == -1)
+        {
+            perror("Error en wait de los bolos\n");
+            return -1;
+        }
 
         switch (num_caidos)
         {
@@ -474,14 +505,34 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
     /* Para el resto de bolos, comprobamos si han devuelto o no, mediante la
      * versión no bloqueante de waitpid.
      * waitpid devuelve:
-     *  -1 si no hay ningún hijo que haya terminado
+     *  -1 en caso de error (no hay hijos, se ha interrumpido la instrucción...)
      *  0 si el hijo no ha terminado
      *  pid del hijo si ha terminado
      */
-    /* TODO: Comprobar que waitpid no sea -1 (error)? */
-    if (waitpid(pid_E, NULL, WNOHANG) == pid_E) tirado[3] = 1;
-    if (waitpid(pid_H, NULL, WNOHANG) == pid_H) tirado[6] = 1;
-    if (waitpid(pid_I, NULL, WNOHANG) == pid_I) tirado[7] = 1;
+    waitr = waitpid(pid_E, NULL, WNOHANG);
+    if (waitr == pid_E)
+        tirado[3] = 1;
+    else if (waitr == -1)
+    {
+        perror("Error en waitpid E\n");
+        return -1;
+    }
+
+    waitr = waitpid(pid_H, NULL, WNOHANG);
+    if (waitr == pid_H) tirado[6] = 1;
+    else if (waitr == -1)
+    {
+        perror("Error en waitpid H\n");
+        return -1;
+    }
+
+    waitr = waitpid(pid_I, NULL, WNOHANG);
+    if (waitr == pid_I) tirado[7] = 1;
+    else if (waitr == -1)
+    {
+        perror("Error en waitpid I\n");
+        return -1;
+    }
 
     /* Imprimimos el dibujo */
     writefacil("\n");
@@ -498,6 +549,7 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
     writefacil(tirado[6] ? "*" : "H"); writefacil(" ");
     writefacil(tirado[7] ? "*" : "I"); writefacil(" ");
     writefacil(tirado[8] ? "*" : "J"); writefacil("\n");
+
     return 0;
 }
 
