@@ -21,81 +21,69 @@
 
 #define writefacil(str) write(STDOUT_FILENO, (str), strlen(str))
 
+
 /*
- * Función principal de todos los bolos una vez creados
+ * Esta función se encarga de manejar la lógica de los bolos una vez se han
+ * creado.
  */
 int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D);
 
+/*
+ * Manejadora del padre
+ */
 int padre();
 
+/*
+ * Engendra una ristra de bolos (o un solo bolo) a partir de un array de
+ * tuplas de 3 elementos (nombre, pidI, pidD).
+ *
+ * Devuelve el pid del primer bolo de la ristra.
+ *
+ * n:    número de bolos que vamos a engendrar
+ *
+ * args: array de tuplas de 3 elementos, cada tupla son los argumentos que
+ *       vamos a pasar a la llamada de execl de un bolo.
+ *       En cada tupla:
+ *        - tupla[0] es el nombre del bolo
+ *        - tupla[1] es el pid del suBoloI (o -1 si no tiene)
+ *        - tupla[2] es el pid del suBoloD (o -1 si no tiene)
+ *
+ * argv0_inicial: nombre del programa inicial (argv[0] para el padre.). Lo
+ *        necesitamos para poder pasarle el nombre del programa a las llamadas
+ *        de execl.
+ *
+ * La lista de tuplas se pasa en orden inverso (la tupla del padre es la última
+ * de la lista, la de su hijo es la penúltima,...).
+ */
 int engendrar(int n, int *args, char *bolos, pid_t pid_P);
 
-/* Convierte un entero a un string */
+/*
+ * Convierte un entero a un string
+ */
 char *to_string(int v);
 
-/* Función vacía para pasársela a sigaction */
+/*
+ * Función vacía para pasársela a sigaction
+ */
 void nonada(int signum);
 
-/* Utiliza gettimeofday para decidir qué va a hacer el bolo una vez lo han
- * tirado */
-
+/*
+ * Utiliza gettimeofday para decidir qué va a hacer el bolo una vez lo han
+ * tirado
+ */
 int elegir_accion(void);
+
+/*
+ * Ejecuta un ps
+ */
 pid_t ejecutar_ps(void);
+
+/*
+ * Imprime los bolos vivos por pantalla de manera bonita
+ */
 int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
                      pid_t pid_C, int tirado_B, int tirado_C);
 
-int padre()
-{
-    /* 
-     * Esperamos a que G y J (los últimos hijos en crearse) terminen.
-     * Estos van a mandar una señal SIGUSR1 y SIGUSR2 (respectivamente)
-     * a P cuando se creen.
-     * El código de padre es casi idéntico al de mente.
-     */
-
-    sigset_t conjunto_sin_SIGUSR1, conjunto_sin_SIGUSR2, conjunto_vacio;
-    struct sigaction accion_nueva;
-
-    /*
-     * Creamos una estructura de sigaction que bloquee todas las señales menos
-     * SIGUSR1, y otro que haga lo mismo para SIGUSR2.
-     */
-    sigfillset(&conjunto_sin_SIGUSR1);
-    sigdelset(&conjunto_sin_SIGUSR1, SIGUSR1);
-    
-    sigfillset(&conjunto_sin_SIGUSR2);
-    sigdelset(&conjunto_sin_SIGUSR2, SIGUSR2);
-
-
-    /*
-     * Creamos una estructura de sigaction para poder manejar las señales
-     * SIGUSR1 y SIGUSR2. Guardamos la acción vieja.
-     */
-    sigemptyset(&conjunto_vacio);
-    accion_nueva.sa_handler = nonada;
-    accion_nueva.sa_mask = conjunto_vacio;
-    accion_nueva.sa_flags = SA_RESTART;
-    if (sigaction(SIGUSR1, &accion_nueva, NULL) == -1)
-        return 1;
-    if (sigaction(SIGUSR2, &accion_nueva, NULL) == -1)
-        return 1;
-
-    /*
-     * Esperamos a que nos llegue una señal de SIGUSR1. Significaría
-     * que se ha creado G.
-     */
-    sigsuspend(&conjunto_sin_SIGUSR1);
-    DEBUG_PRINT("[P] Se ha creado G\n");
-    /*
-     * Esperamos a que nos llegue una señal de SIGUSR2. Significaría
-     * que se ha creado J.
-     */
-    sigsuspend(&conjunto_sin_SIGUSR2);
-    DEBUG_PRINT("[P] Se ha creado J\n");
-
-    DEBUG_PRINT("[P] muero\n");
-    return 0;
-}
 
 int main(int argc, char *argv[])
 {
@@ -273,11 +261,62 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+
+int padre()
+{
+    /* 
+     * Esperamos a que G y J (los últimos hijos en crearse) terminen.
+     * Estos van a mandar una señal SIGUSR1 y SIGUSR2 (respectivamente)
+     * a P cuando se creen.
+     * El código de padre es casi idéntico al de mente.
+     */
+
+    sigset_t conjunto_sin_SIGUSR1, conjunto_sin_SIGUSR2, conjunto_vacio;
+    struct sigaction accion_nueva;
+
+    /*
+     * Creamos una estructura de sigaction que bloquee todas las señales menos
+     * SIGUSR1, y otro que haga lo mismo para SIGUSR2.
+     */
+    sigfillset(&conjunto_sin_SIGUSR1);
+    sigdelset(&conjunto_sin_SIGUSR1, SIGUSR1);
+    
+    sigfillset(&conjunto_sin_SIGUSR2);
+    sigdelset(&conjunto_sin_SIGUSR2, SIGUSR2);
+
+
+    /*
+     * Creamos una estructura de sigaction para poder manejar las señales
+     * SIGUSR1 y SIGUSR2. Guardamos la acción vieja.
+     */
+    sigemptyset(&conjunto_vacio);
+    accion_nueva.sa_handler = nonada;
+    accion_nueva.sa_mask = conjunto_vacio;
+    accion_nueva.sa_flags = SA_RESTART;
+    if (sigaction(SIGUSR1, &accion_nueva, NULL) == -1)
+        return 1;
+    if (sigaction(SIGUSR2, &accion_nueva, NULL) == -1)
+        return 1;
+
+    /*
+     * Esperamos a que nos llegue una señal de SIGUSR1. Significaría
+     * que se ha creado G.
+     */
+    sigsuspend(&conjunto_sin_SIGUSR1);
+    DEBUG_PRINT("[P] Se ha creado G\n");
+    /*
+     * Esperamos a que nos llegue una señal de SIGUSR2. Significaría
+     * que se ha creado J.
+     */
+    sigsuspend(&conjunto_sin_SIGUSR2);
+    DEBUG_PRINT("[P] Se ha creado J\n");
+
+    DEBUG_PRINT("[P] muero\n");
+    return 0;
+}
+
 void nonada(int signum) {}
-/*
- * Esta función se encarga de manejar la lógica de los bolos una vez se han
- * creado.
- */
+
 int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
 {
     sigset_t conjunto_sin_SIGTERM, conjunto_vacio;
@@ -483,28 +522,6 @@ int elegir_accion(void)
     return tv.tv_usec % 4;
 }
 
-/*
- * Engendra una ristra de bolos (o un solo bolo) a partir de un array de
- * tuplas de 3 elementos (nombre, pidI, pidD).
- *
- * Devuelve el pid del primer bolo de la ristra.
- *
- * n:    número de bolos que vamos a engendrar
- *
- * args: array de tuplas de 3 elementos, cada tupla son los argumentos que
- *       vamos a pasar a la llamada de execl de un bolo.
- *       En cada tupla:
- *        - tupla[0] es el nombre del bolo
- *        - tupla[1] es el pid del suBoloI (o -1 si no tiene)
- *        - tupla[2] es el pid del suBoloD (o -1 si no tiene)
- *
- * argv0_inicial: nombre del programa inicial (argv[0] para el padre.). Lo
- *        necesitamos para poder pasarle el nombre del programa a las llamadas
- *        de execl.
- *
- * La lista de tuplas se pasa en orden inverso (la tupla del padre es la última
- * de la lista, la de su hijo es la penúltima,...).
- */
 int engendrar(int n, int *args, char *argv0_inicial, pid_t pid_P)
 {
     // ai = (--n) * 3  =>> empiezo a contar por 1 (--n)
