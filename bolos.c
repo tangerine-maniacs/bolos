@@ -13,12 +13,6 @@
     #define __USE_POSIX
 #endif
 
-#ifdef DEBUG
-    #define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__)
-#else
-    #define DEBUG_PRINT(...) do {} while (0)
-#endif
-
 #define writefacil(str) write(STDOUT_FILENO, (str), strlen(str))
 
 
@@ -154,7 +148,6 @@ int main(int argc, char *argv[])
              *   - el nombre del programa
              *  Esto sólo ocurre cuando el bolo es A.
              */
-            DEBUG_PRINT("A: %d\n", getpid());
             break;
 
         case 4:
@@ -189,7 +182,6 @@ int main(int argc, char *argv[])
                 }
             }
 
-            DEBUG_PRINT("[%d %s] Se me han muerto %d hijos :)\n", getpid(), argv[0], hijos_muertos);
 
             exit(hijos_muertos + 1);
     }
@@ -266,13 +258,11 @@ int main(int argc, char *argv[])
         return retorno_mente;
 
     /* Dormir */
-    DEBUG_PRINT("A duerme durante 4 segundos...\n");
     sleep(4);
     /* Imprimir dibujo */
     imprimir_dibujo(pid_H, pid_I, pid_E, pid_B, pid_C, tirado_I, tirado_D);
 
     /* Usar ps -fu */
-    DEBUG_PRINT("Aquí tienes el ps -fu usuario, para verificar que todo está bien:\n");
     pid_ps = ejecutar_ps(); 
     if (pid_ps == -1)
     {
@@ -285,10 +275,8 @@ int main(int argc, char *argv[])
         perror("Error en waitpid ps\n");
         return 1;
     }
-    DEBUG_PRINT("Fin del ps -fu $USER\n");
 
     /* Matar */
-    DEBUG_PRINT("Mato a todos los procesos hijos\n");
     kill(0, SIGINT);
 
     return 0;
@@ -336,15 +324,12 @@ int padre()
      * que se ha creado G.
      */
     sigsuspend(&conjunto_sin_SIGUSR1);
-    DEBUG_PRINT("[P] Se ha creado G\n");
     /*
      * Esperamos a que nos llegue una señal de SIGUSR2. Significaría
      * que se ha creado J.
      */
     sigsuspend(&conjunto_sin_SIGUSR2);
-    DEBUG_PRINT("[P] Se ha creado J\n");
 
-    DEBUG_PRINT("[P] muero\n");
     return 0;
 }
 
@@ -380,10 +365,6 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
     if (sigaction(SIGTERM, &accion_nueva, NULL) == -1) return 1;
 
     /* Aquí ya tenemos código de verdad. */
-    if (suBoloI != -1)
-        DEBUG_PRINT("[%d] Tengo debajo a %d y %d\n", getpid(), suBoloI, suBoloD);
-    else
-        DEBUG_PRINT("[%d] No tengo bolos debajo\n", getpid());
 
     /*
      * Esperamos a que nos llegue una señal de SIGTERM. Significaría
@@ -391,7 +372,6 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
      */
     sigsuspend(&conjunto_sin_SIGTERM);
     /* Me tiraron :( */
-    DEBUG_PRINT("[%d] He sido tirado :(\n", getpid());
 
     /* Si tenemos bolos debajo de nosotros, procedemos a tirarlos. */
     if (suBoloI != -1 && suBoloD != -1)
@@ -399,30 +379,23 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
         switch (elegir_accion())
         {
             case 0:
-                DEBUG_PRINT("[%d] No tiro a nadie\n", getpid());
                 *tirado_I = 0;
                 *tirado_D = 0;
                 break;
 
             case 1:
-                DEBUG_PRINT("[%d] Tiro al bolo de la izq (%d).\n", getpid(),
-                       suBoloI);
                 kill(suBoloI, SIGTERM);
                 *tirado_I = 1;
                 *tirado_D = 0;
                 break;
 
             case 2:
-                DEBUG_PRINT("[%d] Tiro al bolo de de la dcha (%d).\n", getpid(),
-                       suBoloD);
                 kill(suBoloD, SIGTERM);
                 *tirado_I = 0;
                 *tirado_D = 1;
                 break;
 
             case 3:
-                DEBUG_PRINT("[%d] Tiro ambos bolos (%d y %d)\n", getpid(), suBoloI,
-                       suBoloD);
                 kill(suBoloI, SIGTERM);
                 kill(suBoloD, SIGTERM);
                 *tirado_I = 1;
@@ -432,9 +405,6 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
     }
     else
     {
-        DEBUG_PRINT("[%d] No tengo bolos debajo de mi, no tiro a nadie.\n",
-               getpid());
-
         *tirado_I = 0;
         *tirado_D = 0;
     }
