@@ -63,9 +63,11 @@ int engendrar(int n, int *args, char *bolos, pid_t pid_P);
 char *to_string(int v);
 
 /*
- * Función vacía para pasársela a sigaction
+ * Función vacía para pasársela a sigaction cuando queremos ignorar una señal.
  */
 void nonada(int signum);
+/* Función manejadora que sale del programa */
+void salir(int signum);
 
 /*
  * Utiliza gettimeofday para decidir qué va a hacer el bolo una vez lo han
@@ -84,23 +86,40 @@ pid_t ejecutar_ps(void);
 int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
                      pid_t pid_C, int tirado_B, int tirado_C);
 
-
 int main(int argc, char *argv[])
 {
     int *args, retorno_mente, subI, subD, hijos_muertos, tirado_D, tirado_I, stat;
     pid_t pid_H, pid_I, pid_E, pid_B, pid_C;
     pid_t pid_ps;
+    sigset_t conjunto_todo, conjunto_vacio;
+    struct sigaction accion_SIGINT;
 
-    /* Bloqueamos todas las señales que se nos permite bloquear, para evitar
+    /* Bloqueamos todas las señales, entre ellas SIGTERM, para evitar
      * que se nos envíen mientras estamos creando el árbol de procesos.
      * Las desbloquearemos cuando estemos listos para recibirlas.
+     * (Si no lo hicieramos, podríamos recibir SIGTERM antes de que
+     * estemos listos para manejarla, y entonces el programa se
+     * terminaría sin haber creado el árbol de procesos).
+     *
+     * No bloqueamos SIGINT porque queremos que si se le manda SIGINT
+     * a algún proceso, este muera. (Para que A pueda matar a todos los hijos).
      */
-    sigset_t conjunto_todo;
-
     sigfillset(&conjunto_todo);
     sigdelset(&conjunto_todo, SIGINT);
     if (sigprocmask(SIG_BLOCK, &conjunto_todo, NULL) == -1)
         return 1;
+
+
+    /* Preparamos una función manejadora para SIGINT, que simplemente
+     * sale del programa, por si la shell que nos ha llamado ignorase esta 
+     * señal.
+     */
+    sigemptyset(&conjunto_vacio);
+    accion_SIGINT.sa_handler = salir;
+    accion_SIGINT.sa_mask = conjunto_vacio;
+    accion_SIGINT.sa_flags = SA_RESTART;
+    sigaction(SIGINT, &accion_SIGINT, NULL);
+
 
     /* Comprobar P mirando si el primer argumento acaba con "bolos" */
     if (strstr(argv[0], "bolos") != NULL)
@@ -330,6 +349,7 @@ int padre()
 }
 
 void nonada(int signum) {}
+void salir(int signum) { exit(0); }
 
 int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
 {

@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-trap '' SIGINT
+trap -- '' SIGINT
 
 make
 
@@ -19,7 +19,7 @@ for i in {1..1000} ; do
   done
   echo "A dead"
 
-  pgrep './bolos'
+  pgrep -f './bolos'
   if [ $? -eq 0 ]; then
     echo "Bolos still running"
     ps -f | grep bolos
