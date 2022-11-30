@@ -88,7 +88,8 @@ int main(int argc, char *argv[])
     sigset_t conjunto_todo, conjunto_vacio;
     struct sigaction accion_SIGINT;
 
-    /* Bloqueamos todas las señales, entre ellas SIGTERM, para evitar
+    /* 
+     * Bloqueamos todas las señales, entre ellas SIGTERM, para evitar
      * que se nos envíen mientras estamos creando el árbol de procesos.
      * Las desbloquearemos cuando estemos listos para recibirlas.
      * (Si no lo hicieramos, podríamos recibir SIGTERM antes de que
@@ -104,7 +105,8 @@ int main(int argc, char *argv[])
         return 1;
 
 
-    /* Preparamos una función manejadora para SIGINT, que simplemente
+    /* 
+     * Preparamos una función manejadora para SIGINT, que simplemente
      * sale del programa, por si la shell que nos ha llamado ignorase esta 
      * señal.
      */
@@ -137,13 +139,15 @@ int main(int argc, char *argv[])
     switch (argc)
     {
         case 1:
-            /* 1 solo argumento debería ocurrir cuando se llama a P pero por
+            /* 
+             * 1 solo argumento debería ocurrir cuando se llama a P pero por
              * precaución lo hacemos aparte comprobando el argumento.
              */
             break;
 
         case 2:
-            /* Tenemos 2 argumentos:
+            /* 
+             * Tenemos 2 argumentos:
              *   - el nombre del bolo
              *   - el nombre del programa
              *  Esto sólo ocurre cuando el bolo es A.
@@ -151,7 +155,8 @@ int main(int argc, char *argv[])
             break;
 
         case 4:
-            /* Tenemos 4 argumentos:
+            /* 
+             * Tenemos 4 argumentos:
              *   - nombre del bolo
              *   - argv[0] original
              *   - pid del bolo de la izquierda
@@ -190,10 +195,12 @@ int main(int argc, char *argv[])
      * Si hemos llegado aquí, el bolo es A (el único que sale del switch de
      * arriba).
      */
-    /* === Engendramos a H e I, que son hijos de A, y se los tenemos que ===
+    /* 
+     * === Engendramos a H e I, que son hijos de A, y se los tenemos que ===
      * === pasar a D, E y F.                                             ===
      */
-    /* Reservamos espacio para los argumentos que le vamos a pasar a engendrar.
+    /* 
+     * Reservamos espacio para los argumentos que le vamos a pasar a engendrar.
      * Estos bolos no tienen hijos, así que reservamos espacio para una tupla
      * de 3 argumentos.
      * El nombre del bolo, el pid del suBoloI y el pid de suBoloD.
@@ -216,14 +223,14 @@ int main(int argc, char *argv[])
     args[0] = 'I'; args[1] = -1; args[2] = -1;
     pid_I = engendrar(1, args, argv[1], -1);
 
-    /* === Engendramos a E con H e I como hijos                          ===
-     */
+    /* === Engendramos a E con H e I como hijos                          === */
     args[0] = 'E'; args[1] = pid_H; args[2] = pid_I;
     pid_E = engendrar(1, args, argv[1], -1);
 
     free(args); /* Liberamos la memoria del malloc anterior. */
 
-    /* === Engendramos las ristras BDG y CFJ.                            ===
+    /* 
+     * === Engendramos las ristras BDG y CFJ.                            ===
      * === Para BDG, le pasamos a engendrar los datos de B, y sus hijos, ===
      * === D y G.                                                        ===
      */
@@ -234,17 +241,18 @@ int main(int argc, char *argv[])
         exit(2);
     }
 
-    args[0] = 'G'; args[1] = -1; args[2] = -1;     // G no tiene suBolos
-    args[3] = 'D'; args[4] = -1; args[5] = pid_H;  // D tiene H como suBoloD
-    args[6] = 'B'; args[7] = -1; args[8] = pid_E;  // B tiene E como suBoloD
+    args[0] = 'G'; args[1] = -1; args[2] = -1;     /* G no tiene suBolos     */
+    args[3] = 'D'; args[4] = -1; args[5] = pid_H;  /* D tiene H como suBoloD */
+    args[6] = 'B'; args[7] = -1; args[8] = pid_E;  /* B tiene E como suBoloD */
     pid_B = engendrar(3, args, argv[1], getppid());
 
-    /* === Para CFJ, le pasamos a engendrar los datos de C, y sus hijos, ===
+    /* 
+     * === Para CFJ, le pasamos a engendrar los datos de C, y sus hijos, ===
      * === F y J.                                                        ===
      */
-    args[0] = 'J'; args[1] = -1; args[2] = -1;  // J no tiene suBolos
-    args[3] = 'F'; args[4] = pid_I; args[5] = -1;  // F tiene I como suBoloI
-    args[6] = 'C'; args[7] = pid_E; args[8] = -1;  // C tiene E como suBoloI
+    args[0] = 'J'; args[1] = -1; args[2] = -1;     /* J no tiene suBolos     */
+    args[3] = 'F'; args[4] = pid_I; args[5] = -1;  /* F tiene I como suBoloI */
+    args[6] = 'C'; args[7] = pid_E; args[8] = -1;  /* C tiene E como suBoloI */
     pid_C = engendrar(3, args, argv[1], getppid());
 
     free(args); /* Liberamos la memoria del malloc anterior. */
@@ -439,7 +447,7 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
         switch (num_caidos)
         {
             case -1:
-                perror("Error en wait de los bolos\n");
+                perror("Error en wait de B\n");
                 return -1;
             case 0:
                 perror("num_caidos == 0 cuando tirado_B\n");
@@ -455,9 +463,7 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
         }
     }
 
-    /*
-     * Lo mismo pero para la ristra CFJ.
-     */
+    /* Lo mismo pero para la ristra CFJ. */
     if (tirado_C)
     {
         waitr = waitpid(pid_C, &stat, 0);
@@ -471,7 +477,7 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
         switch (num_caidos)
         {
             case -1:
-                perror("Error en wait de los bolos\n");
+                perror("Error en wait de C\n");
                 return -1;
             case 0:
                 perror("num_caidos == 0 cuando tirado_C\n");
@@ -486,7 +492,8 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
         }
     }
 
-    /* Para el resto de bolos, comprobamos si han devuelto o no, mediante la
+    /* 
+     * Para el resto de bolos, comprobamos si han devuelto o no, mediante la
      * versión no bloqueante de waitpid.
      * waitpid devuelve:
      *  -1 en caso de error (no hay hijos, se ha interrumpido la instrucción...)
@@ -561,31 +568,34 @@ int elegir_accion(void)
 
 int engendrar(int n, int *args, char *argv0_inicial, pid_t pid_P)
 {
-    // ai = (--n) * 3  =>> empiezo a contar por 1 (--n)
-    // y cada bolo necesita 3 argumentos ( * 3 )
-    int f;
-    int ai = (--n) * 3; /* ai = argument index
-                         * Índice del primer elemento de la última tupla (
-                         * la del bolo que nos toca).
-                         */
+    int pid;
+    /* 
+     * ai: argument index
+     * Índice del primer elemento de la última tupla de argumentos (la del bolo
+     * que nos toca crear).
+     * Empiezo a contar por 1 (--n) y cada bolo necesita 3 argumentos ( * 3 )
+     */
+    int ai = (--n) * 3; 
 
     pid_t suBoloI = args[ai + 1];
     pid_t suBoloD = args[ai + 2];
     char *name;
 
-    switch ((f = fork()))
+    switch ((pid = fork()))
     {
         case -1:
             perror("Fallo al hacer fork para engendrar un hijo (3)\n");
             exit(3);
 
         case 0:
-            /* Código del hijo, engendramos al siguiente bolo de la ristra
+            /* 
+             * Código del hijo, engendramos al siguiente bolo de la ristra
              * si es necesario
              */
             if (n > 0)
             {
-                /* Si el subbolo de la izquierda es -1 (no existe), engendramos
+                /* 
+                 * Si el subbolo de la izquierda es -1 (no existe), engendramos
                  * ese bolo.
                  * Si no, engendramos el subbolo de la derecha.
                  */
@@ -600,7 +610,8 @@ int engendrar(int n, int *args, char *argv0_inicial, pid_t pid_P)
                     kill(pid_P, SIGUSR2);
             }
 
-            /* Cuando un hijo es creado y termina de engendrar, ejecuta execl
+            /* 
+             * Cuando un hijo es creado y termina de engendrar, ejecuta execl
              * para la función principal con el nombre cambiado y los siguientes
              * argumentos:
              *      [nombre, argv0_inicial, suBoloI, suBoloD]
@@ -623,9 +634,11 @@ int engendrar(int n, int *args, char *argv0_inicial, pid_t pid_P)
             exit(4);
 
         default:
-            /* Somos el bolo padre (la primera tupla que se ha de engendrar),
-             * devolvemos el pid del hijo que hemos creado.*/
-            return f;
+            /* 
+             * Somos el bolo padre (la primera tupla que se ha de engendrar),
+             * devolvemos el pid del hijo que hemos creado.
+             */
+            return pid;
     }
 }
 
