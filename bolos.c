@@ -12,6 +12,13 @@
 #ifndef __USE_POSIX
     #define __USE_POSIX
 #endif
+#define __DEBUG
+
+#ifdef __DEBUG
+    #define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__)
+#else
+    #define DEBUG_PRINT(...) do {} while (0)
+#endif
 
 /*
  * Función principal de todos los bolos una vez creados
@@ -19,12 +26,16 @@
 int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D);
 
 int engendrar(int n, int *args, char *bolos);
+
 /* Convierte un entero a un string */
-char *toString(int v);
+char *to_string(int v);
+
 /* Función vacía para pasársela a sigaction */
 void nonada(int signum);
+
 /* Utiliza gettimeofday para decidir qué va a hacer el bolo una vez lo han
  * tirado */
+
 int elegir_accion(void);
 pid_t ejecutar_ps(void);
 int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
@@ -59,7 +70,7 @@ int main(int argc, char *argv[])
                 execl(argv[0], "A", argv[0], NULL);
 
             default:
-                printf("P muere\n");
+                DEBUG_PRINT("P muere\n");
                 exit(0);
         }
     }
@@ -79,7 +90,7 @@ int main(int argc, char *argv[])
              *   - el nombre del programa
              *  Esto sólo ocurre cuando el bolo es A.
              */
-            printf("A: %d\n", getpid());
+            DEBUG_PRINT("A: %d\n", getpid());
             break;
 
         case 4:
@@ -105,7 +116,7 @@ int main(int argc, char *argv[])
                 hijos_muertos += WEXITSTATUS(stat);
             }
 
-            printf("[%d %s] Se me han muerto %d hijos :)\n", getpid(), argv[0], hijos_muertos);
+            DEBUG_PRINT("[%d %s] Se me han muerto %d hijos :)\n", getpid(), argv[0], hijos_muertos);
 
             exit(hijos_muertos + 1);
     }
@@ -182,13 +193,13 @@ int main(int argc, char *argv[])
         return retorno_mente;
 
     /* Dormir */
-    printf("A duerme durante 4 segundos...\n");
+    DEBUG_PRINT("A duerme durante 4 segundos...\n");
     sleep(4);
     /* Imprimir dibujo */
     imprimir_dibujo(pid_H, pid_I, pid_E, pid_B, pid_C, tirado_I, tirado_D);
 
     /* Usar ps -fu */
-    printf("Aquí tienes el ps -fu usuario, para verificar que todo está bien:\n");
+    DEBUG_PRINT("Aquí tienes el ps -fu usuario, para verificar que todo está bien:\n");
     pid_ps = ejecutar_ps(); 
     if (pid_ps == -1)
     {
@@ -196,10 +207,10 @@ int main(int argc, char *argv[])
         return 1;
     }
     waitpid(pid_ps, NULL, 0);
-    printf("Fin del ps -fu $USER\n");
+    DEBUG_PRINT("Fin del ps -fu $USER\n");
 
     /* Matar */
-    printf("Mato a todos los procesos hijos\n");
+    DEBUG_PRINT("Mato a todos los procesos hijos\n");
     kill(0, SIGINT);
 
     return 0;
@@ -239,9 +250,9 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
 
     /* Aquí ya tenemos código de verdad. */
     if (suBoloI != -1)
-        printf("[%d] Tengo debajo a %d y %d\n", getpid(), suBoloI, suBoloD);
+        DEBUG_PRINT("[%d] Tengo debajo a %d y %d\n", getpid(), suBoloI, suBoloD);
     else
-        printf("[%d] No tengo bolos debajo\n", getpid());
+        DEBUG_PRINT("[%d] No tengo bolos debajo\n", getpid());
 
     /*
      * Esperamos a que nos llegue una señal de SIGTERM. Significaría
@@ -249,7 +260,7 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
      */
     sigsuspend(&conjunto_sin_SIGTERM);
     /* Me tiraron :( */
-    printf("[%d] He sido tirado :(\n", getpid());
+    DEBUG_PRINT("[%d] He sido tirado :(\n", getpid());
 
     /* Si tenemos bolos debajo de nosotros, procedemos a tirarlos. */
     if (suBoloI != -1 && suBoloD != -1)
@@ -257,13 +268,13 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
         switch (elegir_accion())
         {
             case 0:
-                printf("[%d] No tiro a nadie\n", getpid());
+                DEBUG_PRINT("[%d] No tiro a nadie\n", getpid());
                 *tirado_I = 0;
                 *tirado_D = 0;
                 break;
 
             case 1:
-                printf("[%d] Tiro al bolo de la izq (%d).\n", getpid(),
+                DEBUG_PRINT("[%d] Tiro al bolo de la izq (%d).\n", getpid(),
                        suBoloI);
                 kill(suBoloI, SIGTERM);
                 *tirado_I = 1;
@@ -271,7 +282,7 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
                 break;
 
             case 2:
-                printf("[%d] Tiro al bolo de de la dcha (%d).\n", getpid(),
+                DEBUG_PRINT("[%d] Tiro al bolo de de la dcha (%d).\n", getpid(),
                        suBoloD);
                 kill(suBoloD, SIGTERM);
                 *tirado_I = 0;
@@ -279,7 +290,7 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
                 break;
 
             case 3:
-                printf("[%d] Tiro ambos bolos (%d y %d)\n", getpid(), suBoloI,
+                DEBUG_PRINT("[%d] Tiro ambos bolos (%d y %d)\n", getpid(), suBoloI,
                        suBoloD);
                 kill(suBoloI, SIGTERM);
                 kill(suBoloD, SIGTERM);
@@ -290,7 +301,7 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
     }
     else
     {
-        printf("[%d] No tengo bolos debajo de mi, no tiro a nadie.\n",
+        DEBUG_PRINT("[%d] No tengo bolos debajo de mi, no tiro a nadie.\n",
                getpid());
 
         *tirado_I = 0;
@@ -300,10 +311,9 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
     /* Fin del código de verdad */
 
     /*
-     * Restauramos el conjunto de señales viejo, y la acción vieja de SIGTERM.
+     * Restauramos la acción vieja de SIGTERM.
      */
     if (sigaction(SIGTERM, &accion_vieja, NULL) == -1) return 1;
-    if (sigprocmask(SIG_SETMASK, &conjunto_viejo, NULL) == -1) return 1;
 
     return 0;
 }
@@ -360,10 +370,8 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
 
             case 3:
                 tirado[8] = 1;
-
             case 2:
                 tirado[4] = 1;
-
             case 1:
                 tirado[1] = 1;
         }
@@ -382,12 +390,12 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
     if (waitpid(pid_I, NULL, WNOHANG) == pid_I) tirado[7] = 1;
 
     /* Imprimimos el dibujo */
-    printf("\n");
-    printf("   *\n"); /* A siempre está tirado */
-    printf("  %c %c\n", tirado[0] ? '*' : 'B', tirado[1] ? '*' : 'C');
-    printf(" %c %c %c\n", tirado[2] ? '*' : 'D', tirado[3] ? '*' : 'E',
+    DEBUG_PRINT("\n");
+    DEBUG_PRINT("   *\n"); /* A siempre está tirado */
+    DEBUG_PRINT("  %c %c\n", tirado[0] ? '*' : 'B', tirado[1] ? '*' : 'C');
+    DEBUG_PRINT(" %c %c %c\n", tirado[2] ? '*' : 'D', tirado[3] ? '*' : 'E',
            tirado[4] ? '*' : 'F');
-    printf("%c %c %c %c\n", tirado[5] ? '*' : 'G', tirado[6] ? '*' : 'H',
+    DEBUG_PRINT("%c %c %c %c\n", tirado[5] ? '*' : 'G', tirado[6] ? '*' : 'H',
            tirado[7] ? '*' : 'I', tirado[8] ? '*' : 'J');
 
     return 0;
@@ -400,7 +408,7 @@ pid_t ejecutar_ps(void)
         case -1:
             return -1;
         case 0:
-            execlp("ps", "ps", "-fu", getenv("USER"), NULL);
+            execlp("ps", "ps", "-fu", to_string(getuid()), NULL);
             perror("execlp ps");
             return -1;
         default:
@@ -489,8 +497,8 @@ int engendrar(int n, int *args, char *argv0_inicial)
             name[0] = args[ai];
             name[1] = 0;
 
-            execl(argv0_inicial, name, argv0_inicial, toString(suBoloI),
-                  toString(suBoloD), NULL);
+            execl(argv0_inicial, name, argv0_inicial, to_string(suBoloI),
+                  to_string(suBoloD), NULL);
 
             /* Si llegamos aquí, algo ha fallado */
             perror("Se ha llegado al tope de engendrar. (4)\n");
@@ -503,13 +511,13 @@ int engendrar(int n, int *args, char *argv0_inicial)
     }
 }
 
-char *toString(int v)
+char *to_string(int v)
 {
     int len = (int)(ceil(log10(abs(v))) + 2);
     char *str = malloc(len * sizeof(char));
     if (str == NULL)
     {
-        perror("Error al alocar memoria en toString\n");
+        perror("Error al alocar memoria en to_string\n");
         exit(2);
     }
 
