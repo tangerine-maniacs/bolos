@@ -1,26 +1,30 @@
 #! /usr/bin/env bash
 
 trap '' SIGINT
-tail -f /var/log/syslog >& /dev/null
 
 make
-./bolos
 
 for i in {1..1000} ; do
+  ./bolos
   apid=$(pgrep -f 'A ./bolos')
+  #apid=$(pgrep -f '^A$')
+  ps -p "$apid" 
 
-  kill -TERM "$apid"
+  kill -15 "$apid"
   echo "Sent SIGTERM to $apid"
 
   # wait for "$apid" to die
-  while kill -0 "$apid" 2>/dev/null; do
-      sleep 0.1
+  while ps -p "$apid" >/dev/null; do
+      sleep 1.5
   done
   echo "A dead"
 
-  pgrep -f './bolos'
+  pgrep './bolos'
   if [ $? -eq 0 ]; then
     echo "Bolos still running"
+    ps -f | grep bolos
+    pkill -f './bolos'
+    #pkill './bolos'
     exit 1
   fi
 done
