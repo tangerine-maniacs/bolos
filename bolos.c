@@ -26,7 +26,9 @@
  */
 int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D);
 
-int engendrar(int n, int *args, char *bolos);
+int padre();
+
+int engendrar(int n, int *args, char *bolos, pid_t pid_P);
 
 /* Convierte un entero a un string */
 char *to_string(int v);
@@ -42,6 +44,59 @@ pid_t ejecutar_ps(void);
 int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
                      pid_t pid_C, int tirado_B, int tirado_C);
 
+int padre()
+{
+    /* 
+     * Esperamos a que G y J (los últimos hijos en crearse) terminen.
+     * Estos van a mandar una señal SIGUSR1 y SIGUSR2 (respectivamente)
+     * a P cuando se creen.
+     * El código de padre es casi idéntico al de mente.
+     */
+
+    sigset_t conjunto_sin_SIGUSR1, conjunto_sin_SIGUSR2, conjunto_vacio;
+    struct sigaction accion_nueva;
+
+    /*
+     * Creamos una estructura de sigaction que bloquee todas las señales menos
+     * SIGUSR1, y otro que haga lo mismo para SIGUSR2.
+     */
+    sigfillset(&conjunto_sin_SIGUSR1);
+    sigdelset(&conjunto_sin_SIGUSR1, SIGUSR1);
+    
+    sigfillset(&conjunto_sin_SIGUSR2);
+    sigdelset(&conjunto_sin_SIGUSR2, SIGUSR2);
+
+
+    /*
+     * Creamos una estructura de sigaction para poder manejar las señales
+     * SIGUSR1 y SIGUSR2. Guardamos la acción vieja.
+     */
+    sigemptyset(&conjunto_vacio);
+    accion_nueva.sa_handler = nonada;
+    accion_nueva.sa_mask = conjunto_vacio;
+    accion_nueva.sa_flags = SA_RESTART;
+    if (sigaction(SIGUSR1, &accion_nueva, NULL) == -1)
+        return 1;
+    if (sigaction(SIGUSR2, &accion_nueva, NULL) == -1)
+        return 1;
+
+    /*
+     * Esperamos a que nos llegue una señal de SIGUSR1. Significaría
+     * que se ha creado G.
+     */
+    sigsuspend(&conjunto_sin_SIGUSR1);
+    DEBUG_PRINT("[P] Se ha creado G\n");
+    /*
+     * Esperamos a que nos llegue una señal de SIGUSR2. Significaría
+     * que se ha creado J.
+     */
+    sigsuspend(&conjunto_sin_SIGUSR2);
+    DEBUG_PRINT("[P] Se ha creado J\n");
+
+    DEBUG_PRINT("[P] muero\n");
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     int *args, retorno_mente, subI, subD, hijos_muertos, tirado_D, tirado_I, stat;
@@ -53,6 +108,7 @@ int main(int argc, char *argv[])
      * Las desbloquearemos cuando estemos listos para recibirlas.
      */
     sigset_t conjunto_todo;
+
     sigfillset(&conjunto_todo);
     sigdelset(&conjunto_todo, SIGINT);
     if (sigprocmask(SIG_BLOCK, &conjunto_todo, NULL) == -1)
@@ -72,8 +128,7 @@ int main(int argc, char *argv[])
                 execl(argv[0], "A", argv[0], NULL);
 
             default:
-                DEBUG_PRINT("P muere\n");
-                exit(0);
+                exit(padre());
         }
     }
 
@@ -148,15 +203,15 @@ int main(int argc, char *argv[])
      * de manejar (sólo tenemos que pasar una array).
      */
     args[0] = 'H'; args[1] = -1; args[2] = -1;
-    pid_H = engendrar(1, args, argv[1]);
+    pid_H = engendrar(1, args, argv[1], -1);
 
     args[0] = 'I'; args[1] = -1; args[2] = -1;
-    pid_I = engendrar(1, args, argv[1]);
+    pid_I = engendrar(1, args, argv[1], -1);
 
     /* === Engendramos a E con H e I como hijos                          ===
      */
     args[0] = 'E'; args[1] = pid_H; args[2] = pid_I;
-    pid_E = engendrar(1, args, argv[1]);
+    pid_E = engendrar(1, args, argv[1], -1);
 
     free(args); /* Liberamos la memoria del malloc anterior. */
 
@@ -174,7 +229,7 @@ int main(int argc, char *argv[])
     args[0] = 'G'; args[1] = -1; args[2] = -1;     // G no tiene suBolos
     args[3] = 'D'; args[4] = -1; args[5] = pid_H;  // D tiene H como suBoloD
     args[6] = 'B'; args[7] = -1; args[8] = pid_E;  // B tiene E como suBoloD
-    pid_B = engendrar(3, args, argv[1]);
+    pid_B = engendrar(3, args, argv[1], getppid());
 
     /* === Para CFJ, le pasamos a engendrar los datos de C, y sus hijos, ===
      * === F y J.                                                        ===
@@ -182,7 +237,7 @@ int main(int argc, char *argv[])
     args[0] = 'J'; args[1] = -1; args[2] = -1;  // J no tiene suBolos
     args[3] = 'F'; args[4] = pid_I; args[5] = -1;  // F tiene I como suBoloI
     args[6] = 'C'; args[7] = pid_E; args[8] = -1;  // C tiene E como suBoloI
-    pid_C = engendrar(3, args, argv[1]);
+    pid_C = engendrar(3, args, argv[1], getppid());
 
     free(args); /* Liberamos la memoria del malloc anterior. */
 
@@ -226,7 +281,7 @@ void nonada(int signum) {}
 int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
 {
     sigset_t conjunto_sin_SIGTERM, conjunto_vacio;
-    struct sigaction accion_nueva, accion_vieja;
+    struct sigaction accion_nueva;
 
     /*
      * Creamos una estructura de sigaction que bloquee todas las señales menos
@@ -249,7 +304,7 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
     accion_nueva.sa_flags = SA_RESTART; /* SA_RESTART es porque Polar ha dicho
                                          * que es lo mejor.
                                          */
-    if (sigaction(SIGTERM, &accion_nueva, &accion_vieja) == -1) return 1;
+    if (sigaction(SIGTERM, &accion_nueva, NULL) == -1) return 1;
 
     /* Aquí ya tenemos código de verdad. */
     if (suBoloI != -1)
@@ -312,11 +367,6 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
     }
 
     /* Fin del código de verdad */
-
-    /*
-     * Restauramos la acción vieja de SIGTERM.
-     */
-    if (sigaction(SIGTERM, &accion_vieja, NULL) == -1) return 1;
 
     return 0;
 }
@@ -455,7 +505,7 @@ int elegir_accion(void)
  * La lista de tuplas se pasa en orden inverso (la tupla del padre es la última
  * de la lista, la de su hijo es la penúltima,...).
  */
-int engendrar(int n, int *args, char *argv0_inicial)
+int engendrar(int n, int *args, char *argv0_inicial, pid_t pid_P)
 {
     // ai = (--n) * 3  =>> empiezo a contar por 1 (--n)
     // y cada bolo necesita 3 argumentos ( * 3 )
@@ -486,9 +536,14 @@ int engendrar(int n, int *args, char *argv0_inicial)
                  * Si no, engendramos el subbolo de la derecha.
                  */
                 if (suBoloI == -1)
-                    suBoloI = engendrar(n, args, argv0_inicial);
+                    suBoloI = engendrar(n, args, argv0_inicial, pid_P);
                 else
-                    suBoloD = engendrar(n, args, argv0_inicial);
+                    suBoloD = engendrar(n, args, argv0_inicial, pid_P);
+            } else {
+                if (args[ai] == 'G') 
+                    kill(pid_P, SIGUSR1);
+                else if (args[ai] == 'J')
+                    kill(pid_P, SIGUSR2);
             }
 
             /* Cuando un hijo es creado y termina de engendrar, ejecuta execl
