@@ -36,6 +36,15 @@ int main(int argc, char *argv[])
     pid_t pid_H, pid_I, pid_E, pid_B, pid_C;
     pid_t pid_ps;
 
+    /* Bloqueamos todas las señales que se nos permite bloquear, para evitar
+     * que se nos envíen mientras estamos creando el árbol de procesos.
+     * Las desbloquearemos cuando estemos listos para recibirlas.
+     */
+    sigset_t conjunto_todo;
+    sigfillset(&conjunto_todo);
+    if (sigprocmask(SIG_BLOCK, &conjunto_todo, NULL) == -1)
+        return 1;
+
     /* Comprobar P mirando si el primer argumento acaba con "bolos" */
     if (strstr(argv[0], "bolos") != NULL)
     {
@@ -203,31 +212,14 @@ void nonada(int signum) {}
  */
 int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
 {
-    /*
-     * Creamos un conjunto de bloqueo de señales con SIGTERM, y otro sin
-     * SIGTERM. También guardamos el conjunto de señales viejo, para poder
-     * restaurarlo cuando terminemos.
-     */
-    sigset_t conjunto_SIGTERM, conjunto_viejo, conjunto_sin_SIGTERM,
-        conjunto_vacio;
+    sigset_t conjunto_sin_SIGTERM, conjunto_vacio;
     struct sigaction accion_nueva, accion_vieja;
 
     /*
-     * Creamos una máscara de bloqueo de señales que tenga sólo SIGTERM.
-     * Guardamos el conjunto de señales viejo para poder restaurarlo cuando
-     * terminemos.
+     * Creamos una estructura de sigaction que bloquee todas las señales menos
+     * SIGTERM.
      */
-    sigemptyset(&conjunto_SIGTERM);
-    sigaddset(&conjunto_SIGTERM, SIGTERM);
-    if (sigprocmask(SIG_BLOCK, &conjunto_SIGTERM, &conjunto_viejo) == -1)
-        return 1;
-
-    /*
-     * Creamos una estructura de sigaction como la vieja pero sin SIGTERM.
-     * Para ello, hacemos la copia del conjunto viejo y le quitamos la señal
-     * de SIGTERM.
-     */
-    conjunto_sin_SIGTERM = conjunto_viejo;
+    sigfillset(&conjunto_sin_SIGTERM);
     sigdelset(&conjunto_sin_SIGTERM, SIGTERM);
 
     /*
@@ -319,9 +311,6 @@ int mente(pid_t suBoloI, pid_t suBoloD, int *tirado_I, int *tirado_D)
 int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
                      pid_t pid_C, int tirado_B, int tirado_C)
 {
-    /* 
-     * no, no estaban bien. contar letras es sorprendentemente complicado
-     */
     int tirado[9] = {0};
     int num_caidos, stat;
 
@@ -348,19 +337,16 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
             /* switch truco 🤙*/
             case 3:
                 tirado[5] = 1;
-
             case 2:
                 tirado[2] = 1;
-
             case 1:
-                /*
-                 * esta la podría hacer fuera, pero
-                 * el switch truco quedaba peor :(
-                */
                 tirado[0] = 1; 
         }
     }
 
+    /*
+     * Lo mismo pero para la ristra CFJ.
+     */
     if (tirado_C)
     {
         waitpid(pid_C, &stat, 0);
@@ -395,15 +381,6 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
     if (waitpid(pid_H, NULL, WNOHANG) == pid_H) tirado[6] = 1;
     if (waitpid(pid_I, NULL, WNOHANG) == pid_I) tirado[7] = 1;
 
-    /* 
-     * Limpiamos la pantalla antes de escribir
-     * system("clear"); :(
-     *
-     * \e[2J    limpia la pantalla y limpia el scrollback buffer
-     * \e[1;1H  mueve el cursor arriba
-     */
-    printf("\e[3J\e[1;1H");
-
     /* Imprimimos el dibujo */
     printf("\n");
     printf("   *\n"); /* A siempre está tirado */
@@ -412,7 +389,6 @@ int imprimir_dibujo(pid_t pid_H, pid_t pid_I, pid_t pid_E, pid_t pid_B,
            tirado[4] ? '*' : 'F');
     printf("%c %c %c %c\n", tirado[5] ? '*' : 'G', tirado[6] ? '*' : 'H',
            tirado[7] ? '*' : 'I', tirado[8] ? '*' : 'J');
-
 
     return 0;
 }
@@ -425,6 +401,7 @@ pid_t ejecutar_ps(void)
             return -1;
         case 0:
             execlp("ps", "ps", "-fu", getenv("USER"), NULL);
+            perror("execlp ps");
             return -1;
         default:
             return pid;
